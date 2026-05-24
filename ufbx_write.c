@@ -11928,7 +11928,8 @@ static void ufbxwi_save_connections(ufbxwi_save_context *sc)
 				ufbxw_id src_id = conn.id;
 
 				ufbxwi_element *src_element = ufbxwi_get_element(scene, conn.id);
-				ufbxw_assert(src_element);
+				if (!src_element)
+					continue;
 
 				if (sc->ascii) {
 					const ufbxwi_element_type *src_et = &scene->element_types.data[src_element->type_id];
@@ -13153,7 +13154,7 @@ ufbxw_abi void ufbxw_node_set_material(ufbxw_scene *scene, ufbxw_node node, size
 	ufbxwi_check_element(scene, node.id, nd);
 
 	if (nd->materials.count <= index) {
-		const size_t num_push = nd->materials.count + 1 - index;
+		const size_t num_push = (index + 1) - nd->materials.count;
 		ufbxwi_check(ufbxwi_list_push_zero_n(&scene->ator, &nd->materials, ufbxw_material, num_push));
 	}
 

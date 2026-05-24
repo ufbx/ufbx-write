@@ -266,3 +266,72 @@ UFBXWT_SCENE_CHECK(mesh_material_texture)
 	// TODO
 }
 #endif
+
+UFBXWT_SCENE_TEST(mesh_material_hole)
+#if UFBXWT_IMPL
+{
+	ufbxw_node node = ufbxwt_create_node(scene, "Node");
+	ufbxw_mesh mesh = ufbxw_create_mesh(scene);
+
+	ufbxw_mesh_add_instance(scene, mesh, node);
+
+	ufbxw_vec3 vertices[] = {
+		{ -1.0f, 0.0f, 0.0f },
+		{ +1.0f, 0.0f, 0.0f },
+		{ -1.0f, 0.0f, 2.0f },
+		{ +1.0f, 0.0f, 2.0f },
+		{ -1.0f, 0.0f, 4.0f },
+		{ +1.0f, 0.0f, 4.0f },
+	};
+	int32_t indices[] = {
+		0, 2, 3, 1, 2, 4, 5, 3,
+	};
+	int32_t face_offsets[] = {
+		0, 4, 8,
+	};
+	int32_t material_indices[] = {
+		0, 1,
+	};
+
+	ufbxw_vec3_buffer vertex_buffer = ufbxw_view_vec3_array(scene, vertices, ufbxwt_arraycount(vertices));
+	ufbxw_int_buffer index_buffer = ufbxw_view_int_array(scene, indices, ufbxwt_arraycount(indices));
+	ufbxw_int_buffer face_buffer = ufbxw_view_int_array(scene, face_offsets, ufbxwt_arraycount(face_offsets));
+	ufbxw_int_buffer material_buffer = ufbxw_view_int_array(scene, material_indices, ufbxwt_arraycount(material_indices));
+
+	ufbxw_mesh_set_vertices(scene, mesh, vertex_buffer);
+	ufbxw_mesh_set_polygons(scene, mesh, index_buffer, face_buffer);
+	ufbxw_mesh_set_face_material(scene, mesh, material_buffer);
+
+	ufbxw_material material_blue = ufbxw_create_material(scene, UFBXW_MATERIAL_FBX_LAMBERT);
+	ufbxw_set_name(scene, material_blue.id, "Blue");
+
+	ufbxw_vec3 diffuse_blue = { 0.0f, 0.0f, 1.0f };
+	ufbxw_set_vec3(scene, material_blue.id, "DiffuseColor", diffuse_blue);
+
+	ufbxw_node_set_material(scene, node, 1, material_blue);
+}
+#endif
+
+UFBXWT_SCENE_CHECK(mesh_material_hole)
+#if UFBXWT_IMPL
+{
+	ufbx_node *node = ufbx_find_node(scene, "Node");
+	ufbxwt_assert(node);
+
+	ufbx_mesh *mesh = node->mesh;
+	ufbxwt_assert(mesh);
+
+	// NOTE: Invalid material index gets clamped by ufbx
+	ufbxwt_assert(mesh->face_material.count == 2);
+	ufbxwt_assert(mesh->face_material.data[0] == 0);
+	ufbxwt_assert(mesh->face_material.data[1] == 0);
+
+	ufbxwt_assert(node->materials.count == 1);
+	ufbx_material *material_blue = node->materials.data[0];
+
+	ufbxwt_assert(!strcmp(material_blue->name.data, "Blue"));
+
+	ufbx_vec3 diffuse_blue = { 0.0f, 0.0f, 1.0f };
+	ufbxwt_assert_close_uvec3(err, material_blue->fbx.diffuse_color.value_vec3, diffuse_blue);
+}
+#endif
