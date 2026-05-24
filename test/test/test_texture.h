@@ -60,8 +60,12 @@ UFBXWT_SCENE_TEST(video_large_content)
 	const size_t content_size = 8 * 1024;
 	ufbxw_byte_buffer buffer = ufbxw_create_byte_buffer(scene, content_size);
 	ufbxw_byte_list list = ufbxw_edit_byte_buffer(scene, buffer);
-	for (size_t i = 0; i < content_size; i++) {
-		list.data[i] = (char)((i * 0x9e3779b9u) >> 24);
+	ufbxwt_assert(list.count == content_size);
+
+	if (list.count > 0) {
+		for (size_t i = 0; i < content_size; i++) {
+			list.data[i] = (char)((i * 0x9e3779b9u) >> 24);
+		}
 	}
 
 	ufbxw_video_set_content(scene, video, buffer);
