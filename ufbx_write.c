@@ -8550,6 +8550,7 @@ static void ufbxwi_generate_indices(ufbxw_scene *scene, ufbxw_mesh_attribute_des
 static ufbxw_video ufbxwi_get_or_create_texture_video(ufbxw_scene *scene, ufbxw_texture texture)
 {
 	ufbxwi_texture *td = ufbxwi_get_texture(scene, texture);
+	if (!td) return ufbxw_null_video;
 	if (td->video.id != 0) return td->video;
 
 	ufbxw_video video = ufbxw_create_video(scene);
