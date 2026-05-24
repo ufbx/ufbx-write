@@ -7938,7 +7938,7 @@ static ufbxw_anim_prop ufbxwi_animate_prop(ufbxw_scene *scene, ufbxw_id id, ufbx
 
 	ufbxwi_token first_curve_prop = curve_props[0];
 
-	// For single channel propertes, use the property name
+	// For single channel properties, use the property name
 	if (curve_count == 1) {
 		ufbxw_string prop_name = scene->string_pool.tokens.data[prop];
 		ufbxw_string name = ufbxwi_format(&scene->ator, &scene->tmp_list, "d|%S", prop_name);
