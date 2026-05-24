@@ -12637,13 +12637,8 @@ ufbxw_abi ufbxw_float_buffer ufbxw_external_float_stream(ufbxw_scene *scene, ufb
 
 ufbxw_abi ufbxw_byte_list ufbxw_edit_byte_buffer(ufbxw_scene *scene, ufbxw_byte_buffer buffer)
 {
-	ufbxw_assert(ufbxwi_buffer_id_type(buffer.id) == UFBXWI_BUFFER_TYPE_BYTE);
-	ufbxwi_buffer *buf = ufbxwi_get_buffer(&scene->buffers, buffer.id);
 	ufbxw_byte_list result = { NULL, 0 };
-	if (buf && buf->state == UFBXWI_BUFFER_STATE_OWNED) {
-		result.data = buf->data.owned.data;
-		result.count = buf->count;
-	}
+	result.data = (char*)ufbxwi_edit_buffer(&scene->buffers, &result.count, buffer.id, UFBXWI_BUFFER_TYPE_BYTE);
 	return result;
 }
 
