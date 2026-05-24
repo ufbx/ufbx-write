@@ -4273,6 +4273,7 @@ typedef enum {
 
 static const char *ufbxwi_buffer_type_names[] = {
 	"none",
+	"byte",
 	"int",
 	"long",
 	"real",
