@@ -4456,7 +4456,7 @@ static ufbxwi_mutable_void_span ufbxwi_get_buffer_owned_data(ufbxwi_buffer_pool 
 {
 	ufbxwi_buffer *buffer = ufbxwi_get_buffer(pool, id);
 	ufbxwi_mutable_void_span result = { NULL, 0 };
-	if (buffer->state == UFBXWI_BUFFER_STATE_OWNED) {
+	if (buffer && buffer->state == UFBXWI_BUFFER_STATE_OWNED) {
 		result.data = buffer->data.owned.data;
 		result.count = buffer->count;
 	}
@@ -8487,6 +8487,8 @@ static void ufbxwi_generate_indices(ufbxw_scene *scene, ufbxw_mesh_attribute_des
 
 	ufbxwi_make_buffer_owned(&scene->buffers, desc->values);
 	ufbxwi_mutable_void_span values = ufbxwi_get_buffer_owned_data(&scene->buffers, desc->values);
+	if (ufbxwi_is_fatal(&scene->error)) return;
+
 	ufbxw_int_buffer index_buffer = ufbxw_create_int_buffer(scene, values.count);
 	ufbxw_int_list indices = ufbxw_edit_int_buffer(scene, index_buffer);
 	if (ufbxwi_is_fatal(&scene->error)) return;
@@ -8689,7 +8691,7 @@ static void ufbxwi_prepare_scene(ufbxw_scene *scene, const ufbxw_prepare_opts *o
 	if (opts->patch_anim_stack_times) {
 		ufbxwi_for_id_list(ufbxw_id, stack_id, elements_by_type[UFBXW_ELEMENT_ANIM_STACK]) {
 			ufbxwi_anim_stack *stack = ufbxwi_get_anim_stack_by_id(scene, stack_id);
-			ufbxw_assert(stack);
+			if (!stack) continue;
 
 			if (stack->local_start != 0 || stack->local_stop != 0) continue;
 
@@ -8698,11 +8700,11 @@ static void ufbxwi_prepare_scene(ufbxw_scene *scene, const ufbxw_prepare_opts *o
 
 			ufbxwi_for_id_list(ufbxw_id, layer_id, stack->layers) {
 				ufbxwi_anim_layer *layer = ufbxwi_get_anim_layer_by_id(scene, layer_id);
-				ufbxw_assert(layer);
+				if (!layer) continue;
 
 				ufbxwi_for_id_list(ufbxw_id, prop_id, layer->anim_props) {
 					ufbxwi_anim_prop *prop = ufbxwi_get_anim_prop_by_id(scene, prop_id);
-					ufbxw_assert(prop);
+					if (!prop) continue;
 
 					for (size_t i = 0; i < prop->curves.count; i++) {
 						ufbxw_id curve_id = prop->curves.data[i].id;
@@ -8743,7 +8745,7 @@ static void ufbxwi_prepare_scene(ufbxw_scene *scene, const ufbxw_prepare_opts *o
 	if (opts->patch_anim_stack_reference_times) {
 		ufbxwi_for_id_list(ufbxw_id, stack_id, elements_by_type[UFBXW_ELEMENT_ANIM_STACK]) {
 			ufbxwi_anim_stack *stack = ufbxwi_get_anim_stack_by_id(scene, stack_id);
-			ufbxw_assert(stack);
+			if (!stack) continue;
 
 			if (stack->reference_start != 0 || stack->reference_stop != 0) continue;
 			stack->reference_start = stack->local_start;
@@ -8780,6 +8782,8 @@ static void ufbxwi_prepare_scene(ufbxw_scene *scene, const ufbxw_prepare_opts *o
 	if (opts->patch_video_filename) {
 		ufbxwi_for_id_list(ufbxw_id, texture_id, elements_by_type[UFBXW_ELEMENT_TEXTURE]) {
 			ufbxwi_texture *td = ufbxwi_get_texture_by_id(scene, texture_id);
+			if (!td) continue;
+
 			ufbxwi_video *vd = ufbxwi_get_video(scene, td->video);
 			if (!vd) continue;
 
@@ -8791,6 +8795,7 @@ static void ufbxwi_prepare_scene(ufbxw_scene *scene, const ufbxw_prepare_opts *o
 	if (opts->add_missing_skeletons) {
 		ufbxwi_for_id_list(ufbxw_id, cluster_id, elements_by_type[UFBXW_ELEMENT_SKIN_CLUSTER]) {
 			ufbxwi_skin_cluster *cluster = ufbxwi_get_skin_cluster_by_id(scene, cluster_id);
+			if (!cluster) continue;
 			if (!cluster->node.id) continue;
 
 			ufbxwi_node *node = ufbxwi_get_node(scene, cluster->node);
@@ -8805,6 +8810,7 @@ static void ufbxwi_prepare_scene(ufbxw_scene *scene, const ufbxw_prepare_opts *o
 	if (opts->add_missing_bind_poses) {
 		ufbxwi_for_id_list(ufbxw_id, skin_id, elements_by_type[UFBXW_ELEMENT_SKIN_DEFORMER]) {
 			ufbxwi_skin_deformer *skin = ufbxwi_get_skin_deformer_by_id(scene, skin_id);
+			if (!skin) continue;
 			if (skin->bind_pose.id) continue;
 
 			ufbxw_bind_pose pose = ufbxw_create_bind_pose(scene);
