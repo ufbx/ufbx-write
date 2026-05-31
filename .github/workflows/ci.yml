@@ -126,10 +126,10 @@ jobs:
 
       - name: Format ufbx_write.c
         run: |
-          uncrustify -c misc/uncrustify.cfg -f ufbx_write.c
+          uncrustify -c misc/uncrustify.cfg ufbx_write.c
           diff -u ufbx_write.c ufbx_write.c.uncrustify
 
       - name: Format ufbx_write.h
         run: |
-          uncrustify -c misc/uncrustify.cfg -f ufbx_write.h
+          uncrustify -c misc/uncrustify.cfg ufbx_write.h
           diff -u ufbx_write.h ufbx_write.h.uncrustify
