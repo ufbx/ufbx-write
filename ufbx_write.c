@@ -14527,7 +14527,7 @@ ufbxw_abi ufbxw_ktime_range ufbxw_anim_stack_get_time_range(ufbxw_scene *scene, 
 ufbxw_abi ufbxw_ktime_range ufbxw_anim_stack_get_reference_time_range(ufbxw_scene *scene, ufbxw_anim_stack stack)
 {
 	ufbxw_ktime_range range = { 0, 0 };
-	ufbxwi_anim_stack *s = ufbxwi_get_anim_stack(scene, stack);
+	ufbxwi_anim_stack* s = ufbxwi_get_anim_stack(scene, stack);
 	if (s) {
 		range.begin = s->reference_start;
 		range.end = s->reference_stop;
