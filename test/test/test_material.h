@@ -267,6 +267,45 @@ UFBXWT_SCENE_CHECK(mesh_material_texture)
 }
 #endif
 
+UFBXWT_SCENE_TEST(material_texture_set_replace)
+#if UFBXWT_IMPL
+{
+	ufbxw_material material = ufbxw_create_material(scene, UFBXW_MATERIAL_FBX_LAMBERT);
+	ufbxw_set_name(scene, material.id, "TextureMaterial");
+
+	ufbxw_texture texture_a = ufbxw_create_texture(scene, UFBXW_TEXTURE_FILE);
+	ufbxw_set_name(scene, texture_a.id, "TextureA");
+
+	ufbxw_texture texture_b = ufbxw_create_texture(scene, UFBXW_TEXTURE_FILE);
+	ufbxw_set_name(scene, texture_b.id, "TextureB");
+
+	ufbxw_material_set_texture(scene, material, "DiffuseColor", texture_a);
+	ufbxw_material_set_texture(scene, material, "DiffuseColor", texture_b);
+	ufbxw_material_set_texture(scene, material, "SpecularColor", texture_a);
+	ufbxw_material_set_texture(scene, material, "EmissiveColor", texture_a);
+	ufbxw_material_set_texture(scene, material, "EmissiveColor", ufbxw_null_texture);
+}
+#endif
+
+UFBXWT_SCENE_CHECK(material_texture_set_replace)
+#if UFBXWT_IMPL
+{
+	ufbx_material *material = ufbx_find_material(scene, "TextureMaterial");
+	ufbxwt_assert(material);
+
+	ufbx_texture *diffuse = ufbx_find_prop_texture(material, "DiffuseColor");
+	ufbxwt_assert(diffuse);
+	ufbxwt_assert(!strcmp(diffuse->name.data, "TextureB"));
+
+	ufbx_texture *specular = ufbx_find_prop_texture(material, "SpecularColor");
+	ufbxwt_assert(specular);
+	ufbxwt_assert(!strcmp(specular->name.data, "TextureA"));
+
+	ufbx_texture *emissive = ufbx_find_prop_texture(material, "EmissiveColor");
+	ufbxwt_assert(!emissive);
+}
+#endif
+
 UFBXWT_SCENE_TEST(mesh_material_hole)
 #if UFBXWT_IMPL
 {

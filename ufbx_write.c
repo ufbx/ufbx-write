@@ -14226,8 +14226,27 @@ ufbxw_abi void ufbxw_material_set_texture(ufbxw_scene *scene, ufbxw_material mat
 
 ufbxw_abi void ufbxw_material_set_texture_len(ufbxw_scene *scene, ufbxw_material material, const char *prop, size_t prop_len, ufbxw_texture texture)
 {
+	ufbxwi_material *mt = ufbxwi_get_material(scene, material);
+	ufbxwi_check_element(scene, material.id, mt);
+	if (texture.id) {
+		ufbxwi_check_element(scene, texture.id, ufbxwi_get_texture(scene, texture));
+	}
+
 	ufbxwi_token token = ufbxwi_intern_token(&scene->string_pool, prop, prop_len);
-	ufbxwi_connect_imp(scene, UFBXW_CONNECTION_TEXTURE, texture.id, material.id, UFBXWI_TOKEN_NONE, token, 0);
+	ufbxwi_check(token);
+
+	for (size_t i = 0; i < mt->textures.count; ) {
+		ufbxwi_conn conn = mt->textures.data[i];
+		if (conn.dst_prop == token) {
+			ufbxwi_disconnect_imp(scene, UFBXW_CONNECTION_TEXTURE, conn.id, material.id, conn.src_prop, token);
+		} else {
+			i++;
+		}
+	}
+
+	if (texture.id) {
+		ufbxwi_connect_imp(scene, UFBXW_CONNECTION_TEXTURE, texture.id, material.id, UFBXWI_TOKEN_NONE, token, 0);
+	}
 }
 
 ufbxw_abi ufbxw_texture ufbxw_create_texture(ufbxw_scene *scene, ufbxw_texture_type type)
