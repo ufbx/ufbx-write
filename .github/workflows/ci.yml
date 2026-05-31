@@ -90,6 +90,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - name: Check for typos
         if: ${{ always() && !cancelled() }}
         uses: crate-ci/typos@master
@@ -110,3 +112,24 @@ jobs:
       - name: Run tests
         run: build/test-cpp
 
+  ci_formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Setup Uncrustify
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y uncrustify
+
+      - name: Format ufbx_write.c
+        run: |
+          uncrustify -c misc/uncrustify.cfg -f ufbx_write.c
+          diff -u ufbx_write.c ufbx_write.c.uncrustify
+
+      - name: Format ufbx_write.h
+        run: |
+          uncrustify -c misc/uncrustify.cfg -f ufbx_write.h
+          diff -u ufbx_write.h ufbx_write.h.uncrustify
