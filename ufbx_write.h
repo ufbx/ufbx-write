@@ -310,9 +310,12 @@ typedef enum ufbxw_connection_type {
 
 // -- Memory callbacks
 
+// TODO: Formatter issue on function typedefs
+// ufbxwi_disable_format
 typedef void *ufbxw_alloc_fn(void *user, size_t size);
 typedef void ufbxw_free_fn(void *user, void *ptr, size_t size);
 typedef void ufbxw_free_allocator_fn(void *user);
+// ufbxwi_enable_format
 
 typedef struct ufbxw_allocator {
 	ufbxw_alloc_fn *alloc_fn;
@@ -732,13 +735,13 @@ ufbxw_abi ufbxw_vec3_buffer ufbxw_view_vec3_array(ufbxw_scene *scene, const ufbx
 ufbxw_abi ufbxw_vec3_buffer ufbxw_external_vec3_array(ufbxw_scene *scene, const ufbxw_vec3 *data, size_t count);
 ufbxw_abi ufbxw_vec3_buffer ufbxw_external_vec3_stream(ufbxw_scene *scene, ufbxw_vec3_stream_fn *fn, void *user, size_t count);
 
-ufbxw_abi ufbxw_vec4_buffer ufbxw_create_vec4_buffer(ufbxw_scene* scene, size_t count);
+ufbxw_abi ufbxw_vec4_buffer ufbxw_create_vec4_buffer(ufbxw_scene *scene, size_t count);
 ufbxw_abi ufbxw_vec4_buffer ufbxw_copy_vec4_array(ufbxw_scene *scene, const ufbxw_vec4 *data, size_t count);
 ufbxw_abi ufbxw_vec4_buffer ufbxw_view_vec4_array(ufbxw_scene *scene, const ufbxw_vec4 *data, size_t count);
 ufbxw_abi ufbxw_vec4_buffer ufbxw_external_vec4_array(ufbxw_scene *scene, const ufbxw_vec4 *data, size_t count);
 ufbxw_abi ufbxw_vec4_buffer ufbxw_external_vec4_stream(ufbxw_scene *scene, ufbxw_vec4_stream_fn *fn, void *user, size_t count);
 
-ufbxw_abi ufbxw_float_buffer ufbxw_create_float_buffer(ufbxw_scene* scene, size_t count);
+ufbxw_abi ufbxw_float_buffer ufbxw_create_float_buffer(ufbxw_scene *scene, size_t count);
 ufbxw_abi ufbxw_float_buffer ufbxw_copy_float_array(ufbxw_scene *scene, const float *data, size_t count);
 ufbxw_abi ufbxw_float_buffer ufbxw_view_float_array(ufbxw_scene *scene, const float *data, size_t count);
 ufbxw_abi ufbxw_float_buffer ufbxw_external_float_array(ufbxw_scene *scene, const float *data, size_t count);
@@ -751,8 +754,8 @@ ufbxw_abi ufbxw_long_list ufbxw_edit_long_buffer(ufbxw_scene *scene, ufbxw_long_
 ufbxw_abi ufbxw_real_list ufbxw_edit_real_buffer(ufbxw_scene *scene, ufbxw_real_buffer buffer);
 ufbxw_abi ufbxw_vec2_list ufbxw_edit_vec2_buffer(ufbxw_scene *scene, ufbxw_vec2_buffer buffer);
 ufbxw_abi ufbxw_vec3_list ufbxw_edit_vec3_buffer(ufbxw_scene *scene, ufbxw_vec3_buffer buffer);
-ufbxw_abi ufbxw_vec4_list ufbxw_edit_vec4_buffer(ufbxw_scene* scene, ufbxw_vec4_buffer buffer);
-ufbxw_abi ufbxw_float_list ufbxw_edit_float_buffer(ufbxw_scene* scene, ufbxw_float_buffer buffer);
+ufbxw_abi ufbxw_vec4_list ufbxw_edit_vec4_buffer(ufbxw_scene *scene, ufbxw_vec4_buffer buffer);
+ufbxw_abi ufbxw_float_list ufbxw_edit_float_buffer(ufbxw_scene *scene, ufbxw_float_buffer buffer);
 
 // --
 
@@ -1439,10 +1442,13 @@ typedef struct ufbxw_write_stream {
 ufbxw_abi bool ufbxw_open_file_write(ufbxw_write_stream *stream, const char *path, size_t path_len, ufbxw_error *error);
 
 // TODO: Unify all these kind of APIs, they're all a bit different now...
+// TODO: Formatter issue on function typedefs
+// ufbxwi_disable_format
 typedef void *ufbxw_thread_sync_init_fn(void *user);
 typedef void ufbxw_thread_sync_wait_fn(void *user, void *ctx, uint32_t *p_value, uint32_t ref_value);
 typedef void ufbxw_thread_sync_notify_fn(void *user, void *ctx, uint32_t *p_value, uint32_t wake_count);
 typedef void ufbxw_thread_sync_free_fn(void *user, void *ctx);
+// ufbxwi_enable_format
 
 //  support interface.
 typedef struct ufbxw_thread_sync {

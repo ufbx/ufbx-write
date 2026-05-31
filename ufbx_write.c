@@ -19,6 +19,9 @@
 // TODO: External
 #include <math.h>
 
+// Disable formatting for this section, as we have a lot of code indented in preprocessor directives
+// ufbxwi_disable_format
+
 // -- Malloc
 
 #if defined(ufbxw_malloc) || defined(ufbxw_realloc) || defined(ufbxw_free)
@@ -697,6 +700,9 @@ static ufbxwi_forceinline void ufbxwi_atomic_store(ufbxwi_atomic_u32 *atomic, ui
 }
 
 #endif
+
+// Enable formatting from this point onwards
+// ufbxwi_enable_format
 
 // -- Synchronization
 
@@ -1499,7 +1505,7 @@ static ufbxw_string ufbxwi_vformat(ufbxwi_allocator *ator, ufbxwi_byte_list *buf
 			c = *++f;
 			switch (c) {
 			case 's': {
-				const char *str = va_arg(args, const char *);
+				const char *str = va_arg(args, const char*);
 				size_t len = strlen(str);
 				ufbxwi_check(ufbxwi_list_push_copy_n(ator, buf, char, len, str), ufbxwi_empty_string);
 			} break;
@@ -1854,7 +1860,7 @@ static const uint32_t ufbxwi_deflate_distance_info[] = {
 	0x01817, 0x02018, 0x03018, 0x04019, 0x06019, 0x0801a, 0x0c01a, 0x1001b, 0x1801b, 0x2001c, 0x3001c, 0x4001d, 0x6001d,
 };
 
-static const uint8_t ufbxwi_deflate_codelen_swizzle[] = { 16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15 };
+static const uint8_t ufbxwi_deflate_codelen_swizzle[] = { 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
 
 static ufbxwi_forceinline uint32_t ufbxwi_deflate_length_symbol(int32_t length)
 {
@@ -2650,15 +2656,15 @@ static ufbxwi_noinline uint32_t ufbxwi_adler32(const void *data, size_t size)
 	// the size of the type holding the sum.
 	const ufbxwi_fast_uint num_before_wrap = sizeof(ufbxwi_fast_uint) == 8 ? 380368439u : 5552u;
 
-	ufbxwi_fast_uint  size_left = size;
+	ufbxwi_fast_uint size_left = size;
 	while (size_left > 0) {
-		ufbxwi_fast_uint  num = size_left <= num_before_wrap ? size_left : num_before_wrap;
+		ufbxwi_fast_uint num = size_left <= num_before_wrap ? size_left : num_before_wrap;
 		size_left -= num;
 		const char *end = p + num;
 
 		// Align to 16 bytes
 		while (p != end && !ufbxwi_is_aligned(p, 16)) {
-			a += (ufbxwi_fast_uint )(uint8_t)p[0]; b += a;
+			a += (ufbxwi_fast_uint)(uint8_t)p[0]; b += a;
 			p++;
 		}
 
@@ -2713,10 +2719,10 @@ static ufbxwi_noinline uint32_t ufbxwi_adler32(const void *data, size_t size)
 				p += 256;
 			}
 
-			s1 = _mm_add_epi32(s1, _mm_shuffle_epi32(s1, _MM_SHUFFLE(2,3,0,1)));
-			s2 = _mm_add_epi32(s2, _mm_shuffle_epi32(s2, _MM_SHUFFLE(2,3,0,1)));
-			s1 = _mm_add_epi32(s1, _mm_shuffle_epi32(s1, _MM_SHUFFLE(1,0,3,2)));
-			s2 = _mm_add_epi32(s2, _mm_shuffle_epi32(s2, _MM_SHUFFLE(1,0,3,2)));
+			s1 = _mm_add_epi32(s1, _mm_shuffle_epi32(s1, _MM_SHUFFLE(2, 3, 0, 1)));
+			s2 = _mm_add_epi32(s2, _mm_shuffle_epi32(s2, _MM_SHUFFLE(2, 3, 0, 1)));
+			s1 = _mm_add_epi32(s1, _mm_shuffle_epi32(s1, _MM_SHUFFLE(1, 0, 3, 2)));
+			s2 = _mm_add_epi32(s2, _mm_shuffle_epi32(s2, _MM_SHUFFLE(1, 0, 3, 2)));
 
 			b += chunk_size * a;
 			a += (uint32_t)_mm_cvtsi128_si32(s1);
@@ -2751,17 +2757,17 @@ static ufbxwi_noinline uint32_t ufbxwi_adler32(const void *data, size_t size)
 
 			uint64_t s1 = s1_lo + s1_hi;
 			s1 = (s1 & mask16) + ((s1 >> 16u) & mask16);
-			ufbxwi_fast_uint  s1_sum = (ufbxwi_fast_uint )(s1 + (s1 >> 32u));
+			ufbxwi_fast_uint s1_sum = (ufbxwi_fast_uint)(s1 + (s1 >> 32u));
 
-			ufbxwi_fast_uint  s2_sum = (ufbxwi_fast_uint )(s2 + (s2 >> 32u)) * 8;
-			s2_sum += ((ufbxwi_fast_uint )(s1_lo >>  0) & 0xffff) * 8;
-			s2_sum += ((ufbxwi_fast_uint )(s1_hi >>  0) & 0xffff) * 7;
-			s2_sum += ((ufbxwi_fast_uint )(s1_lo >> 16) & 0xffff) * 6;
-			s2_sum += ((ufbxwi_fast_uint )(s1_hi >> 16) & 0xffff) * 5;
-			s2_sum += ((ufbxwi_fast_uint )(s1_lo >> 32) & 0xffff) * 4;
-			s2_sum += ((ufbxwi_fast_uint )(s1_hi >> 32) & 0xffff) * 3;
-			s2_sum += ((ufbxwi_fast_uint )(s1_lo >> 48) & 0xffff) * 2;
-			s2_sum += ((ufbxwi_fast_uint )(s1_hi >> 48) & 0xffff) * 1;
+			ufbxwi_fast_uint s2_sum = (ufbxwi_fast_uint)(s2 + (s2 >> 32u)) * 8;
+			s2_sum += ((ufbxwi_fast_uint)(s1_lo >>  0) & 0xffff) * 8;
+			s2_sum += ((ufbxwi_fast_uint)(s1_hi >>  0) & 0xffff) * 7;
+			s2_sum += ((ufbxwi_fast_uint)(s1_lo >> 16) & 0xffff) * 6;
+			s2_sum += ((ufbxwi_fast_uint)(s1_hi >> 16) & 0xffff) * 5;
+			s2_sum += ((ufbxwi_fast_uint)(s1_lo >> 32) & 0xffff) * 4;
+			s2_sum += ((ufbxwi_fast_uint)(s1_hi >> 32) & 0xffff) * 3;
+			s2_sum += ((ufbxwi_fast_uint)(s1_lo >> 48) & 0xffff) * 2;
+			s2_sum += ((ufbxwi_fast_uint)(s1_hi >> 48) & 0xffff) * 1;
 
 			b += chunk_size * a;
 			a += s1_sum & 0xffffffffu;
@@ -2871,8 +2877,11 @@ typedef enum {
 
 typedef bool ufbxwi_task_fn(void *user, void *thread_ctx);
 
+// TODO: Formatter issue on function typedefs
+// ufbxwi_disable_format
 typedef void *ufbxwi_create_thread_ctx_fn(void *user);
 typedef void ufbxwi_free_thread_ctx_fn(void *user, void *thread_ctx);
+// ufbxwi_enable_format
 
 typedef struct {
 	ufbxwi_create_thread_ctx_fn *create_thread_ctx_fn;
@@ -4972,8 +4981,8 @@ static ufbxwi_forceinline ufbxw_long_buffer ufbxwi_to_user_long_buffer(ufbxwi_bu
 static ufbxwi_forceinline ufbxw_real_buffer ufbxwi_to_user_real_buffer(ufbxwi_buffer_pool *pool, ufbxw_buffer_id id) { ufbxw_real_buffer b = { ufbxwi_to_user_buffer(pool, id) }; return b; }
 static ufbxwi_forceinline ufbxw_vec2_buffer ufbxwi_to_user_vec2_buffer(ufbxwi_buffer_pool *pool, ufbxw_buffer_id id) { ufbxw_vec2_buffer b = { ufbxwi_to_user_buffer(pool, id) }; return b; }
 static ufbxwi_forceinline ufbxw_vec3_buffer ufbxwi_to_user_vec3_buffer(ufbxwi_buffer_pool *pool, ufbxw_buffer_id id) { ufbxw_vec3_buffer b = { ufbxwi_to_user_buffer(pool, id) }; return b; }
-static ufbxwi_forceinline ufbxw_vec4_buffer ufbxwi_to_user_vec4_buffer(ufbxwi_buffer_pool* pool, ufbxw_buffer_id id) { ufbxw_vec4_buffer b = { ufbxwi_to_user_buffer(pool, id) }; return b; }
-static ufbxwi_forceinline ufbxw_float_buffer ufbxwi_to_user_float_buffer(ufbxwi_buffer_pool* pool, ufbxw_buffer_id id) { ufbxw_float_buffer b = { ufbxwi_to_user_buffer(pool, id) }; return b; }
+static ufbxwi_forceinline ufbxw_vec4_buffer ufbxwi_to_user_vec4_buffer(ufbxwi_buffer_pool *pool, ufbxw_buffer_id id) { ufbxw_vec4_buffer b = { ufbxwi_to_user_buffer(pool, id) }; return b; }
+static ufbxwi_forceinline ufbxw_float_buffer ufbxwi_to_user_float_buffer(ufbxwi_buffer_pool *pool, ufbxw_buffer_id id) { ufbxw_float_buffer b = { ufbxwi_to_user_buffer(pool, id) }; return b; }
 
 typedef struct {
 	const void *pos, *end;
@@ -6194,8 +6203,8 @@ static const ufbxwi_prop_desc ufbxwi_display_layer_props[] = {
 
 static const ufbxwi_prop_desc ufbxwi_implementation_props[] = {
 	{ UFBXWI_ShaderLanguage, UFBXW_PROP_TYPE_STRING, ufbxwi_field(ufbxwi_implementation, shader_language), ufbxwi_default(string_empty) },
-	{ UFBXWI_ShaderLanguageVersion, UFBXW_PROP_TYPE_STRING, ufbxwi_field(ufbxwi_implementation, shader_language_version),ufbxwi_default(string_empty) },
-	{ UFBXWI_RenderAPI, UFBXW_PROP_TYPE_STRING, ufbxwi_field(ufbxwi_implementation, render_api),ufbxwi_default(string_empty) },
+	{ UFBXWI_ShaderLanguageVersion, UFBXW_PROP_TYPE_STRING, ufbxwi_field(ufbxwi_implementation, shader_language_version), ufbxwi_default(string_empty) },
+	{ UFBXWI_RenderAPI, UFBXW_PROP_TYPE_STRING, ufbxwi_field(ufbxwi_implementation, render_api), ufbxwi_default(string_empty) },
 	{ UFBXWI_RenderAPIVersion, UFBXW_PROP_TYPE_STRING, ufbxwi_field(ufbxwi_implementation, render_api_version), ufbxwi_default(string_empty) },
 	{ UFBXWI_RootBindingName, UFBXW_PROP_TYPE_STRING, ufbxwi_field(ufbxwi_implementation, root_binding_name), ufbxwi_default(string_empty) },
 	{ UFBXWI_Constants, UFBXW_PROP_TYPE_COMPOUND },
@@ -7251,7 +7260,7 @@ static ufbxwi_forceinline const void *ufbxwi_resolve_prop_value(const ufbxwi_ele
 		base = elem->prop_data;
 		break;
 	}
-	return (const char *)base + offset;
+	return (const char*)base + offset;
 }
 
 static ufbxwi_forceinline void *ufbxwi_edit_prop_value(ufbxwi_element *elem, ufbxwi_prop_value value)
@@ -7271,7 +7280,7 @@ static ufbxwi_forceinline void *ufbxwi_edit_prop_value(ufbxwi_element *elem, ufb
 		base = elem->prop_data;
 		break;
 	}
-	return (char *)base + offset;
+	return (char*)base + offset;
 }
 
 static ufbxwi_prop_value ufbxwi_element_add_prop_data(ufbxw_scene *scene, ufbxwi_element *element, ufbxw_prop_data_type data_type)
@@ -8253,13 +8262,13 @@ static bool ufbxwi_is_zero_date(const ufbxw_datetime *dt)
 
 static bool ufbxwi_is_valid_date(const ufbxw_datetime *dt)
 {
-	 if (dt->month < 1 || dt->month > 12) return false;
-	 if (dt->day < 1 || dt->day > 31) return false;
-	 if (dt->hour < 0 || dt->hour > 23) return false;
-	 if (dt->minute < 0 || dt->minute > 59) return false;
-	 if (dt->second < 0 || dt->second > 60) return false;
-	 if (dt->millisecond < 0 || dt->millisecond > 1000) return false;
-	 return true;
+	if (dt->month < 1 || dt->month > 12) return false;
+	if (dt->day < 1 || dt->day > 31) return false;
+	if (dt->hour < 0 || dt->hour > 23) return false;
+	if (dt->minute < 0 || dt->minute > 59) return false;
+	if (dt->second < 0 || dt->second > 60) return false;
+	if (dt->millisecond < 0 || dt->millisecond > 1000) return false;
+	return true;
 }
 
 static ufbxw_string ufbxwi_format_date(char *dst, size_t dst_size, const ufbxw_datetime *dt)
@@ -11083,66 +11092,66 @@ static void ufbxwi_save_props(ufbxwi_save_context *sc, const ufbxwi_element *ele
 		ufbxw_assert(flag <= flags + sizeof(flags));
 
 		switch (type->data_type) {
-			case UFBXW_PROP_DATA_NONE: {
-				ufbxwi_dom_value(sc, "P", "SSSC", name, type->type, type->sub_type, flags);
-			} break;
-			case UFBXW_PROP_DATA_BOOL: {
-				const bool *d = (const bool*)data;
-				ufbxwi_dom_value(sc, "P", "SSSCI", name, type->type, type->sub_type, flags, *d ? 1 : 0);
-			} break;
-			case UFBXW_PROP_DATA_INT32: {
-				const int32_t *d = (const int32_t*)data;
-				ufbxwi_dom_value(sc, "P", "SSSCI", name, type->type, type->sub_type, flags, *d);
-			} break;
-			case UFBXW_PROP_DATA_INT64: {
-				const int64_t *d = (const int64_t*)data;
-				ufbxwi_dom_value(sc, "P", "SSSCL", name, type->type, type->sub_type, flags, *d);
-			} break;
-			case UFBXW_PROP_DATA_REAL: {
-				const ufbxw_real *d = (const ufbxw_real*)data;
-				ufbxwi_dom_value(sc, "P", "SSSCD", name, type->type, type->sub_type, flags, *d);
-			} break;
-			case UFBXW_PROP_DATA_VEC2: {
-				const ufbxw_vec2 *d = (const ufbxw_vec2*)data;
-				ufbxwi_dom_value(sc, "P", "SSSCDD", name, type->type, type->sub_type, flags, d->x, d->y);
-			} break;
-			case UFBXW_PROP_DATA_VEC3: {
-				const ufbxw_vec3 *d = (const ufbxw_vec3*)data;
-				ufbxwi_dom_value(sc, "P", "SSSCDDD", name, type->type, type->sub_type, flags, d->x, d->y, d->z);
-			} break;
-			case UFBXW_PROP_DATA_VEC4: {
-				const ufbxw_vec4 *d = (const ufbxw_vec4*)data;
-				ufbxwi_dom_value(sc, "P", "SSSCDDDD", name, type->type, type->sub_type, flags, d->x, d->y, d->z, d->w);
-			} break;
-			case UFBXW_PROP_DATA_STRING: {
-				const ufbxw_string *d = (const ufbxw_string*)data;
-				ufbxwi_dom_value(sc, "P", "SSSCS", name, type->type, type->sub_type, flags, *d);
-			} break;
-			case UFBXW_PROP_DATA_ID: {
-				ufbxwi_dom_value(sc, "P", "SSSC", name, type->type, type->sub_type, flags);
-			} break;
-			case UFBXW_PROP_DATA_REAL_STRING: {
-				const ufbxw_real_string *d = (const ufbxw_real_string*)data;
-				ufbxwi_dom_value(sc, "P", "SSSCDS", name, type->type, type->sub_type, flags, d->value, d->string);
-			} break;
-			case UFBXW_PROP_DATA_BLOB: {
-				const ufbxw_blob *d = (const ufbxw_blob*)data;
-				ufbxw_assert(0 && "TODO");
-			} break;
-			case UFBXW_PROP_DATA_USER_INT: {
-				const ufbxw_user_int *d = (const ufbxw_user_int*)data;
-				ufbxwi_dom_value(sc, "P", "SSSCIII", name, type->type, type->sub_type, flags, d->value, d->min_value, d->max_value);
-			} break;
-			case UFBXW_PROP_DATA_USER_REAL: {
-				const ufbxw_user_real *d = (const ufbxw_user_real*)data;
-				ufbxwi_dom_value(sc, "P", "SSSCDDD", name, type->type, type->sub_type, flags, d->value, d->min_value, d->max_value);
-			} break;
-			case UFBXW_PROP_DATA_USER_ENUM: {
-				const ufbxw_user_enum *d = (const ufbxw_user_enum*)data;
-				ufbxwi_dom_value(sc, "P", "SSSCIS", name, type->type, type->sub_type, flags, d->value, d->options);
-			} break;
-			default:
-				ufbxwi_unreachable("bad data type");
+		case UFBXW_PROP_DATA_NONE: {
+			ufbxwi_dom_value(sc, "P", "SSSC", name, type->type, type->sub_type, flags);
+		} break;
+		case UFBXW_PROP_DATA_BOOL: {
+			const bool *d = (const bool*)data;
+			ufbxwi_dom_value(sc, "P", "SSSCI", name, type->type, type->sub_type, flags, *d ? 1 : 0);
+		} break;
+		case UFBXW_PROP_DATA_INT32: {
+			const int32_t *d = (const int32_t*)data;
+			ufbxwi_dom_value(sc, "P", "SSSCI", name, type->type, type->sub_type, flags, *d);
+		} break;
+		case UFBXW_PROP_DATA_INT64: {
+			const int64_t *d = (const int64_t*)data;
+			ufbxwi_dom_value(sc, "P", "SSSCL", name, type->type, type->sub_type, flags, *d);
+		} break;
+		case UFBXW_PROP_DATA_REAL: {
+			const ufbxw_real *d = (const ufbxw_real*)data;
+			ufbxwi_dom_value(sc, "P", "SSSCD", name, type->type, type->sub_type, flags, *d);
+		} break;
+		case UFBXW_PROP_DATA_VEC2: {
+			const ufbxw_vec2 *d = (const ufbxw_vec2*)data;
+			ufbxwi_dom_value(sc, "P", "SSSCDD", name, type->type, type->sub_type, flags, d->x, d->y);
+		} break;
+		case UFBXW_PROP_DATA_VEC3: {
+			const ufbxw_vec3 *d = (const ufbxw_vec3*)data;
+			ufbxwi_dom_value(sc, "P", "SSSCDDD", name, type->type, type->sub_type, flags, d->x, d->y, d->z);
+		} break;
+		case UFBXW_PROP_DATA_VEC4: {
+			const ufbxw_vec4 *d = (const ufbxw_vec4*)data;
+			ufbxwi_dom_value(sc, "P", "SSSCDDDD", name, type->type, type->sub_type, flags, d->x, d->y, d->z, d->w);
+		} break;
+		case UFBXW_PROP_DATA_STRING: {
+			const ufbxw_string *d = (const ufbxw_string*)data;
+			ufbxwi_dom_value(sc, "P", "SSSCS", name, type->type, type->sub_type, flags, *d);
+		} break;
+		case UFBXW_PROP_DATA_ID: {
+			ufbxwi_dom_value(sc, "P", "SSSC", name, type->type, type->sub_type, flags);
+		} break;
+		case UFBXW_PROP_DATA_REAL_STRING: {
+			const ufbxw_real_string *d = (const ufbxw_real_string*)data;
+			ufbxwi_dom_value(sc, "P", "SSSCDS", name, type->type, type->sub_type, flags, d->value, d->string);
+		} break;
+		case UFBXW_PROP_DATA_BLOB: {
+			const ufbxw_blob *d = (const ufbxw_blob*)data;
+			ufbxw_assert(0 && "TODO");
+		} break;
+		case UFBXW_PROP_DATA_USER_INT: {
+			const ufbxw_user_int *d = (const ufbxw_user_int*)data;
+			ufbxwi_dom_value(sc, "P", "SSSCIII", name, type->type, type->sub_type, flags, d->value, d->min_value, d->max_value);
+		} break;
+		case UFBXW_PROP_DATA_USER_REAL: {
+			const ufbxw_user_real *d = (const ufbxw_user_real*)data;
+			ufbxwi_dom_value(sc, "P", "SSSCDDD", name, type->type, type->sub_type, flags, d->value, d->min_value, d->max_value);
+		} break;
+		case UFBXW_PROP_DATA_USER_ENUM: {
+			const ufbxw_user_enum *d = (const ufbxw_user_enum*)data;
+			ufbxwi_dom_value(sc, "P", "SSSCIS", name, type->type, type->sub_type, flags, d->value, d->options);
+		} break;
+		default:
+			ufbxwi_unreachable("bad data type");
 		}
 	}
 
@@ -11694,7 +11703,7 @@ static void ufbxwi_save_element(ufbxwi_save_context *sc, ufbxwi_element *element
 		ufbxwi_dom_value(sc, "Version", "I", 100);
 
 		ufbxwi_dom_open(sc, "MetaData", "");
-		ufbxwi_dom_value(sc,"Version", "I", 100);
+		ufbxwi_dom_value(sc, "Version", "I", 100);
 		ufbxwi_dom_value(sc, "Title", "C", "");
 		ufbxwi_dom_value(sc, "Subject", "C", "");
 		ufbxwi_dom_value(sc, "Author", "C", "");
@@ -12287,7 +12296,7 @@ static void ufbxwi_save_imp(ufbxwi_save_context *sc, ufbxw_write_stream *stream,
 	}
 	if (!sc->opts.ascii_formatter.format_long_fn) {
 		sc->opts.ascii_formatter.format_long_fn = &ufbxwi_default_ascii_format_long;
-}
+	}
 	if (!sc->opts.ascii_formatter.format_float_fn) {
 		sc->opts.ascii_formatter.format_float_fn = &ufbxwi_default_ascii_format_float;
 	}
@@ -12625,7 +12634,7 @@ ufbxw_abi ufbxw_vec3_buffer ufbxw_external_vec3_stream(ufbxw_scene *scene, ufbxw
 	return ufbxwi_to_user_vec3_buffer(&scene->buffers, id);
 }
 
-ufbxw_abi ufbxw_vec4_buffer ufbxw_create_vec4_buffer(ufbxw_scene* scene, size_t count)
+ufbxw_abi ufbxw_vec4_buffer ufbxw_create_vec4_buffer(ufbxw_scene *scene, size_t count)
 {
 	ufbxw_buffer_id id = ufbxwi_create_owned_buffer(&scene->buffers, UFBXWI_BUFFER_TYPE_VEC4, count);
 	return ufbxwi_to_user_vec4_buffer(&scene->buffers, id);
@@ -12657,7 +12666,7 @@ ufbxw_abi ufbxw_vec4_buffer ufbxw_external_vec4_stream(ufbxw_scene *scene, ufbxw
 	return ufbxwi_to_user_vec4_buffer(&scene->buffers, id);
 }
 
-ufbxw_abi ufbxw_float_buffer ufbxw_create_float_buffer(ufbxw_scene* scene, size_t count)
+ufbxw_abi ufbxw_float_buffer ufbxw_create_float_buffer(ufbxw_scene *scene, size_t count)
 {
 	ufbxw_buffer_id id = ufbxwi_create_owned_buffer(&scene->buffers, UFBXWI_BUFFER_TYPE_FLOAT, count);
 	return ufbxwi_to_user_float_buffer(&scene->buffers, id);
@@ -12733,14 +12742,14 @@ ufbxw_abi ufbxw_vec3_list ufbxw_edit_vec3_buffer(ufbxw_scene *scene, ufbxw_vec3_
 	return result;
 }
 
-ufbxw_abi ufbxw_vec4_list ufbxw_edit_vec4_buffer(ufbxw_scene* scene, ufbxw_vec4_buffer buffer)
+ufbxw_abi ufbxw_vec4_list ufbxw_edit_vec4_buffer(ufbxw_scene *scene, ufbxw_vec4_buffer buffer)
 {
 	ufbxw_vec4_list result = { NULL, 0 };
 	result.data = (ufbxw_vec4*)ufbxwi_edit_buffer(&scene->buffers, &result.count, buffer.id, UFBXWI_BUFFER_TYPE_VEC4);
 	return result;
 }
 
-ufbxw_abi ufbxw_float_list ufbxw_edit_float_buffer(ufbxw_scene* scene, ufbxw_float_buffer buffer)
+ufbxw_abi ufbxw_float_list ufbxw_edit_float_buffer(ufbxw_scene *scene, ufbxw_float_buffer buffer)
 {
 	ufbxw_float_list result = { NULL, 0 };
 	result.data = (float*)ufbxwi_edit_buffer(&scene->buffers, &result.count, buffer.id, UFBXWI_BUFFER_TYPE_FLOAT);
@@ -13493,7 +13502,7 @@ ufbxw_abi ufbxw_anim_prop ufbxw_node_animate_scaling(ufbxw_scene *scene, ufbxw_n
 
 ufbxw_abi ufbxw_transform ufbxw_node_get_local_transform(ufbxw_scene *scene, ufbxw_node node)
 {
-	ufbxw_transform t = { { 0,0,0 }, { 0,0,0,1 }, { 1,1,1 }};
+	ufbxw_transform t = { { 0, 0, 0 }, { 0, 0, 0, 1 }, { 1, 1, 1 }};
 	ufbxwi_node *nd = ufbxwi_get_node(scene, node);
 	ufbxwi_check_element(scene, node.id, nd, t);
 
@@ -15117,15 +15126,15 @@ ufbxw_abi ufbxwi_noinline ufbxw_matrix ufbxw_transform_to_matrix(const ufbxw_tra
 	ufbxw_real yy = q.y*q.y, yz = q.y*q.z, yw = q.y*q.w;
 	ufbxw_real zz = q.z*q.z, zw = q.z*q.w;
 	ufbxw_matrix m;
-	m.m00 = sx * (- yy - zz + 0.5f);
-	m.m10 = sx * (+ xy + zw);
-	m.m20 = sx * (- yw + xz);
-	m.m01 = sy * (- zw + xy);
-	m.m11 = sy * (- xx - zz + 0.5f);
-	m.m21 = sy * (+ xw + yz);
-	m.m02 = sz * (+ xz + yw);
-	m.m12 = sz * (- xw + yz);
-	m.m22 = sz * (- xx - yy + 0.5f);
+	m.m00 = sx * (-yy - zz + 0.5f);
+	m.m10 = sx * (+xy + zw);
+	m.m20 = sx * (-yw + xz);
+	m.m01 = sy * (-zw + xy);
+	m.m11 = sy * (-xx - zz + 0.5f);
+	m.m21 = sy * (+xw + yz);
+	m.m02 = sz * (+xz + yw);
+	m.m12 = sz * (-xw + yz);
+	m.m22 = sz * (-xx - yy + 0.5f);
 	m.m03 = t->translation.x;
 	m.m13 = t->translation.y;
 	m.m23 = t->translation.z;
@@ -15138,9 +15147,9 @@ ufbxw_abi ufbxw_vec3 ufbxw_quat_rotate_vec3(ufbxw_quat q, ufbxw_vec3 v)
 	ufbxw_real xz = q.x*v.z - q.z*v.x;
 	ufbxw_real yz = q.y*v.z - q.z*v.y;
 	ufbxw_vec3 r;
-	r.x = 2.0f * (+ q.w*yz + q.y*xy + q.z*xz) + v.x;
-	r.y = 2.0f * (- q.x*xy - q.w*xz + q.z*yz) + v.y;
-	r.z = 2.0f * (- q.x*xz - q.y*yz + q.w*xy) + v.z;
+	r.x = 2.0f * (+q.w*yz + q.y*xy + q.z*xz) + v.x;
+	r.y = 2.0f * (-q.x*xy - q.w*xz + q.z*yz) + v.y;
+	r.z = 2.0f * (-q.x*xz - q.y*yz + q.w*xy) + v.z;
 	return r;
 }
 
@@ -15203,11 +15212,11 @@ ufbxw_abi ufbxwi_noinline ufbxw_quat ufbxw_euler_to_quat(ufbxw_vec3 v, ufbxw_rot
 ufbxw_abi ufbxwi_noinline ufbxw_vec3 ufbxw_quat_to_euler(ufbxw_quat q, ufbxw_rotation_order order)
 {
 	// TODO: Derive these rigorously
-	#if defined(UFBXW_REAL_IS_FLOAT)
-		const double eps = 0.9999999;
-	#else
-		const double eps = 0.999999999;
-	#endif
+#if defined(UFBXW_REAL_IS_FLOAT)
+	const double eps = 0.9999999;
+#else
+	const double eps = 0.999999999;
+#endif
 
 	double vx, vy, vz;
 	double t;
