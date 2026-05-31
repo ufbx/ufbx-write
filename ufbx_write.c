@@ -2967,13 +2967,13 @@ static bool ufbxwi_task_complete(ufbxwi_task_queue *tq, ufbxwi_task_id task_id, 
 {
 	ufbxwi_dev_assert(tq->enabled);
 
-    const uint32_t slot_ix = task_id % tq->num_slots;
-    const uint32_t generation = task_id / tq->num_slots;
-    ufbxwi_task_slot *slot = &tq->slots[slot_ix];
+	const uint32_t slot_ix = task_id % tq->num_slots;
+	const uint32_t generation = task_id / tq->num_slots;
+	ufbxwi_task_slot *slot = &tq->slots[slot_ix];
 
-    if (ufbxwi_atomic_load_acquire(&slot->generation) > generation) {
-        return false;
-    }
+	if (ufbxwi_atomic_load_acquire(&slot->generation) > generation) {
+		return false;
+	}
 
 	if (blocking) {
 		ufbxwi_mutex_lock(tq->thread_pool, &slot->mutex);
@@ -2984,31 +2984,31 @@ static bool ufbxwi_task_complete(ufbxwi_task_queue *tq, ufbxwi_task_id task_id, 
 	}
 
 	bool completed = false;
-    if (ufbxwi_atomic_load_relaxed(&slot->generation) == generation) {
-        if (tq->failed) {
-            // Skip task
-        } else if (slot->task.fn(slot->task.user, thread_ctx)) {
+	if (ufbxwi_atomic_load_relaxed(&slot->generation) == generation) {
+		if (tq->failed) {
+			// Skip task
+		} else if (slot->task.fn(slot->task.user, thread_ctx)) {
 			completed = true;
 		} else {
-            // TODO: More descriptive failing
-            ufbxwi_mutex_lock(tq->thread_pool, &tq->fail_mutex);
-            tq->failed = true;
-            ufbxwi_mutex_unlock(tq->thread_pool, &tq->fail_mutex);
-        }
+			// TODO: More descriptive failing
+			ufbxwi_mutex_lock(tq->thread_pool, &tq->fail_mutex);
+			tq->failed = true;
+			ufbxwi_mutex_unlock(tq->thread_pool, &tq->fail_mutex);
+		}
 		ufbxwi_atomic_store(&slot->generation, generation + 1);
-    }
-    ufbxwi_mutex_unlock(tq->thread_pool, &slot->mutex);
-    return completed;
+	}
+	ufbxwi_mutex_unlock(tq->thread_pool, &slot->mutex);
+	return completed;
 }
 
 static bool ufbxwi_task_get_completed(ufbxwi_task_queue *tq, ufbxwi_task_id task_id)
 {
 	ufbxwi_dev_assert(tq->enabled);
 
-    const uint32_t slot_ix = task_id % tq->num_slots;
-    const uint32_t generation = task_id / tq->num_slots;
-    ufbxwi_task_slot *slot = &tq->slots[slot_ix];
-    return ufbxwi_atomic_load_acquire(&slot->generation) > generation;
+	const uint32_t slot_ix = task_id % tq->num_slots;
+	const uint32_t generation = task_id / tq->num_slots;
+	ufbxwi_task_slot *slot = &tq->slots[slot_ix];
+	return ufbxwi_atomic_load_acquire(&slot->generation) > generation;
 }
 
 static ufbxw_task_run_result ufbxwi_task_queue_run_task_imp(ufbxwi_task_queue *tq, void *thread_ctx, ufbxwi_run_task_mode mode, size_t max_count)
