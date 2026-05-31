@@ -6486,10 +6486,11 @@ static bool ufbxwi_conn_add(ufbxw_scene *scene, ufbxwi_conn_type type, void *dat
 	return false;
 }
 
-static bool ufbxwi_conn_remove_one(ufbxw_scene *scene, ufbxwi_conn_type type, void *data, ufbxw_id id)
+static bool ufbxwi_conn_remove_one(ufbxw_scene *scene, ufbxwi_conn_type type, void *data, ufbxw_id id, ufbxwi_token src_prop, ufbxwi_token dst_prop)
 {
 	switch (type & UFBXWI_CONN_TYPE_DATA_MASK) {
 	case UFBXWI_CONN_TYPE_ID: {
+		if (src_prop || dst_prop) return false;
 		ufbxw_id *d = (ufbxw_id*)data;
 		if (*d == id) {
 			*d = ufbxw_null_id;
@@ -6498,13 +6499,14 @@ static bool ufbxwi_conn_remove_one(ufbxw_scene *scene, ufbxwi_conn_type type, vo
 	} break;
 	case UFBXWI_CONN_TYPE_CONN: {
 		ufbxwi_conn *d = (ufbxwi_conn*)data;
-		if (d->id == id) {
+		if (d->id == id && d->src_prop == src_prop && d->dst_prop == dst_prop) {
 			d->id = ufbxw_null_id;
 			d->src_prop = d->dst_prop = UFBXWI_TOKEN_NONE;
 			return true;
 		}
 	} break;
 	case UFBXWI_CONN_TYPE_ID_LIST: {
+		if (src_prop || dst_prop) return false;
 		ufbxwi_id_list *d = (ufbxwi_id_list*)data;
 		// TODO: Unordered/sparse
 		return ufbxwi_id_list_remove_one(d, id);
@@ -6513,16 +6515,18 @@ static bool ufbxwi_conn_remove_one(ufbxw_scene *scene, ufbxwi_conn_type type, vo
 		ufbxwi_conn_list *d = (ufbxwi_conn_list*)data;
 		// TODO: Unordered/sparse
 		ufbxwi_for_list(ufbxwi_conn, conn, *d) {
-			if (conn->id == id) {
+			if (conn->id == id && conn->src_prop == src_prop && conn->dst_prop == dst_prop) {
 				ufbxwi_conn *last = d->data + d->count - 1;
 				if (conn != last) {
 					memmove(conn, conn + 1, ufbxwi_to_size(last - conn) * sizeof(ufbxwi_conn));
 				}
+				d->count--;
 				return true;
 			}
 		}
 	} break;
 	case UFBXWI_CONN_TYPE_BLEND_SHAPE_LIST: {
+		if (src_prop || dst_prop) return false;
 		ufbxwi_blend_shape_conn_list *d = (ufbxwi_blend_shape_conn_list*)data;
 		// TODO: Unordered/sparse
 		ufbxwi_for_list(ufbxwi_blend_shape_conn, conn, *d) {
@@ -6531,6 +6535,7 @@ static bool ufbxwi_conn_remove_one(ufbxw_scene *scene, ufbxwi_conn_type type, vo
 				if (conn != last) {
 					memmove(conn, conn + 1, ufbxwi_to_size(last - conn) * sizeof(ufbxwi_blend_shape_conn));
 				}
+				d->count--;
 				return true;
 			}
 		}
@@ -7752,6 +7757,34 @@ static ufbxwi_noinline bool ufbxwi_get_prop(ufbxw_scene *scene, ufbxw_id id, con
 	}
 }
 
+static bool ufbxwi_disconnect_imp(ufbxw_scene *scene, ufbxw_connection_type type, ufbxw_id src_id, ufbxw_id dst_id, ufbxwi_token src_prop, ufbxwi_token dst_prop)
+{
+	ufbxwi_element *src_elem = ufbxwi_get_element(scene, src_id);
+	ufbxwi_element *dst_elem = ufbxwi_get_element(scene, dst_id);
+	if (!src_elem || !dst_elem) return false;
+
+	ufbxwi_connection_info info = ufbxwi_connection_infos[type];
+	uint64_t src_bits = src_elem->conn_bits | (src_prop != UFBXWI_TOKEN_NONE ? UFBXWI_CONN_BIT_PROPERTY : UFBXWI_CONN_BIT_ELEMENT);
+	uint64_t dst_bits = dst_elem->conn_bits | (dst_prop != UFBXWI_TOKEN_NONE ? UFBXWI_CONN_BIT_PROPERTY : UFBXWI_CONN_BIT_ELEMENT);
+	if ((src_bits & info.src_mask) != info.src_mask) return false;
+	if ((dst_bits & info.dst_mask) != info.dst_mask) return false;
+
+	ufbxwi_conn_type src_type = ufbxwi_conn_type(info.src_conn);
+	ufbxwi_conn_type dst_type = ufbxwi_conn_type(info.dst_conn);
+	void *src_data = (char*)src_elem + ufbxwi_conn_offset(info.src_conn);
+	void *dst_data = (char*)dst_elem + ufbxwi_conn_offset(info.dst_conn);
+
+	bool removed_src = ufbxwi_conn_remove_one(scene, src_type, src_data, dst_id, src_prop, dst_prop);
+	bool removed_dst = ufbxwi_conn_remove_one(scene, dst_type, dst_data, src_id, src_prop, dst_prop);
+	ufbxw_assert(removed_src == removed_dst);
+	return removed_src;
+}
+
+static ufbxwi_forceinline bool ufbxwi_disconnect(ufbxw_scene *scene, ufbxw_connection_type type, ufbxw_id src_id, ufbxw_id dst_id)
+{
+	return ufbxwi_disconnect_imp(scene, type, src_id, dst_id, UFBXWI_TOKEN_NONE, UFBXWI_TOKEN_NONE);
+}
+
 static bool ufbxwi_connect_imp(ufbxw_scene *scene, ufbxw_connection_type type, ufbxw_id src_id, ufbxw_id dst_id, ufbxwi_token src_prop, ufbxwi_token dst_prop, uint32_t flags)
 {
 	ufbxwi_element *src_elem = ufbxwi_get_element(scene, src_id);
@@ -7769,23 +7802,27 @@ static bool ufbxwi_connect_imp(ufbxw_scene *scene, ufbxw_connection_type type, u
 	void *src_data = (char*)src_elem + ufbxwi_conn_offset(info.src_conn);
 	void *dst_data = (char*)dst_elem + ufbxwi_conn_offset(info.dst_conn);
 
-	bool disconnect = false;
+	ufbxw_id prev_dst_id = ufbxw_null_id;
+	ufbxw_id prev_src_id = ufbxw_null_id;
 	if (src_type == UFBXWI_CONN_TYPE_ID && *(ufbxw_id*)src_data != ufbxw_null_id) {
 		if ((flags & UFBXWI_CONNECT_FLAG_DISCONNECT_SRC) == 0) return false;
-		disconnect = true;
+		prev_dst_id = *(ufbxw_id*)src_data;
 	}
 	if (dst_type == UFBXWI_CONN_TYPE_ID && *(ufbxw_id*)dst_data != ufbxw_null_id) {
 		if ((flags & UFBXWI_CONNECT_FLAG_DISCONNECT_DST) == 0) return false;
-		disconnect = true;
+		prev_src_id = *(ufbxw_id*)dst_data;
 	}
 
-	if (disconnect) {
-		ufbxwi_conn_remove_one(scene, src_type, src_data, dst_id);
-		ufbxwi_conn_remove_one(scene, dst_type, dst_data, src_id);
+	if (prev_dst_id != ufbxw_null_id) {
+		ufbxwi_disconnect(scene, type, src_id, prev_dst_id);
 	}
 
-	ufbxwi_conn_add(scene, src_type, src_data, dst_id, src_prop, dst_prop);
-	ufbxwi_conn_add(scene, dst_type, dst_data, src_id, src_prop, dst_prop);
+	if (prev_src_id != ufbxw_null_id) {
+		ufbxwi_disconnect(scene, type, prev_src_id, dst_id);
+	}
+
+	ufbxwi_check(ufbxwi_conn_add(scene, src_type, src_data, dst_id, src_prop, dst_prop), false);
+	ufbxwi_check(ufbxwi_conn_add(scene, dst_type, dst_data, src_id, src_prop, dst_prop), false);
 	return true;
 }
 
@@ -12845,7 +12882,48 @@ ufbxw_abi ufbxw_string ufbxw_get_name(ufbxw_scene *scene, ufbxw_id id)
 	return element->name;
 }
 
-ufbxw_abi void ufbxw_connect(ufbxw_scene *scene, ufbxw_id src, ufbxw_id dst)
+ufbxw_abi void ufbxw_connect(ufbxw_scene *scene, ufbxw_connection_type type, ufbxw_id src, ufbxw_id dst)
+{
+	if ((uint32_t)type == 0 || (uint32_t)type >= UFBXW_CONNECTION_TYPE_COUNT) return;
+	ufbxwi_connect(scene, type, src, dst, 0);
+}
+
+ufbxw_abi void ufbxw_connect_prop(ufbxw_scene *scene, ufbxw_connection_type type, ufbxw_id src, const char *src_prop, ufbxw_id dst, const char *dst_prop)
+{
+	ufbxw_connect_prop_len(scene, type, src, src_prop, src_prop ? strlen(src_prop) : 0, dst, dst_prop, dst_prop ? strlen(dst_prop) : 0);
+}
+
+ufbxw_abi void ufbxw_connect_prop_len(ufbxw_scene *scene, ufbxw_connection_type type, ufbxw_id src, const char *src_prop, size_t src_prop_len, ufbxw_id dst, const char *dst_prop, size_t dst_prop_len)
+{
+	if ((uint32_t)type == 0 || (uint32_t)type >= UFBXW_CONNECTION_TYPE_COUNT) return;
+
+	ufbxwi_token src_token = src_prop_len > 0 ? ufbxwi_intern_token(&scene->string_pool, src_prop, src_prop_len) : UFBXWI_TOKEN_NONE;
+	ufbxwi_token dst_token = dst_prop_len > 0 ? ufbxwi_intern_token(&scene->string_pool, dst_prop, dst_prop_len) : UFBXWI_TOKEN_NONE;
+	ufbxwi_connect_imp(scene, type, src, dst, src_token, dst_token, 0);
+}
+
+ufbxw_abi void ufbxw_disconnect(ufbxw_scene *scene, ufbxw_connection_type type, ufbxw_id src, ufbxw_id dst)
+{
+	if ((uint32_t)type == 0 || (uint32_t)type >= UFBXW_CONNECTION_TYPE_COUNT) return;
+	ufbxwi_disconnect(scene, type, src, dst);
+}
+
+ufbxw_abi void ufbxw_disconnect_prop(ufbxw_scene *scene, ufbxw_connection_type type, ufbxw_id src, const char *src_prop, ufbxw_id dst, const char *dst_prop)
+{
+	ufbxw_disconnect_prop_len(scene, type, src, src_prop, src_prop ? strlen(src_prop) : 0, dst, dst_prop, dst_prop ? strlen(dst_prop) : 0);
+}
+
+ufbxw_abi void ufbxw_disconnect_prop_len(ufbxw_scene *scene, ufbxw_connection_type type, ufbxw_id src, const char *src_prop, size_t src_prop_len, ufbxw_id dst, const char *dst_prop, size_t dst_prop_len)
+{
+	if ((uint32_t)type == 0 || (uint32_t)type >= UFBXW_CONNECTION_TYPE_COUNT) return;
+
+	ufbxwi_token src_token = src_prop_len > 0 ? ufbxwi_get_token(&scene->string_pool, src_prop, src_prop_len) : UFBXWI_TOKEN_NONE;
+	ufbxwi_token dst_token = dst_prop_len > 0 ? ufbxwi_get_token(&scene->string_pool, dst_prop, dst_prop_len) : UFBXWI_TOKEN_NONE;
+	if ((src_prop_len > 0 && !src_token) || (dst_prop_len > 0 && !dst_token)) return;
+	ufbxwi_disconnect_imp(scene, type, src, dst, src_token, dst_token);
+}
+
+ufbxw_abi void ufbxw_fbx_connect(ufbxw_scene *scene, ufbxw_id src, ufbxw_id dst)
 {
 	for (uint32_t i = 1; i < UFBXW_CONNECTION_TYPE_COUNT; i++) {
 		ufbxw_connection_type conn_type = (ufbxw_connection_type)i;
@@ -12853,12 +12931,12 @@ ufbxw_abi void ufbxw_connect(ufbxw_scene *scene, ufbxw_id src, ufbxw_id dst)
 	}
 }
 
-ufbxw_abi void ufbxw_connect_prop(ufbxw_scene *scene, ufbxw_id src, const char *src_prop, ufbxw_id dst, const char *dst_prop)
+ufbxw_abi void ufbxw_fbx_connect_prop(ufbxw_scene *scene, ufbxw_id src, const char *src_prop, ufbxw_id dst, const char *dst_prop)
 {
-	ufbxw_connect_prop_len(scene, src, src_prop, src_prop ? strlen(src_prop) : 0, dst, dst_prop, dst_prop ? strlen(dst_prop) : 0);
+	ufbxw_fbx_connect_prop_len(scene, src, src_prop, src_prop ? strlen(src_prop) : 0, dst, dst_prop, dst_prop ? strlen(dst_prop) : 0);
 }
 
-ufbxw_abi void ufbxw_connect_prop_len(ufbxw_scene *scene, ufbxw_id src, const char *src_prop, size_t src_prop_len, ufbxw_id dst, const char *dst_prop, size_t dst_prop_len)
+ufbxw_abi void ufbxw_fbx_connect_prop_len(ufbxw_scene *scene, ufbxw_id src, const char *src_prop, size_t src_prop_len, ufbxw_id dst, const char *dst_prop, size_t dst_prop_len)
 {
 	ufbxwi_token src_token = src_prop_len > 0 ? ufbxwi_intern_token(&scene->string_pool, src_prop, src_prop_len) : UFBXWI_TOKEN_NONE;
 	ufbxwi_token dst_token = dst_prop_len > 0 ? ufbxwi_intern_token(&scene->string_pool, dst_prop, dst_prop_len) : UFBXWI_TOKEN_NONE;
@@ -12866,6 +12944,31 @@ ufbxw_abi void ufbxw_connect_prop_len(ufbxw_scene *scene, ufbxw_id src, const ch
 	for (uint32_t i = 1; i < UFBXW_CONNECTION_TYPE_COUNT; i++) {
 		ufbxw_connection_type conn_type = (ufbxw_connection_type)i;
 		if (ufbxwi_connect_imp(scene, conn_type, src, dst, src_token, dst_token, 0)) break;
+	}
+}
+
+ufbxw_abi void ufbxw_fbx_disconnect(ufbxw_scene *scene, ufbxw_id src, ufbxw_id dst)
+{
+	for (uint32_t i = 1; i < UFBXW_CONNECTION_TYPE_COUNT; i++) {
+		ufbxw_connection_type conn_type = (ufbxw_connection_type)i;
+		if (ufbxwi_disconnect(scene, conn_type, src, dst)) break;
+	}
+}
+
+ufbxw_abi void ufbxw_fbx_disconnect_prop(ufbxw_scene *scene, ufbxw_id src, const char *src_prop, ufbxw_id dst, const char *dst_prop)
+{
+	ufbxw_fbx_disconnect_prop_len(scene, src, src_prop, src_prop ? strlen(src_prop) : 0, dst, dst_prop, dst_prop ? strlen(dst_prop) : 0);
+}
+
+ufbxw_abi void ufbxw_fbx_disconnect_prop_len(ufbxw_scene *scene, ufbxw_id src, const char *src_prop, size_t src_prop_len, ufbxw_id dst, const char *dst_prop, size_t dst_prop_len)
+{
+	ufbxwi_token src_token = src_prop_len > 0 ? ufbxwi_get_token(&scene->string_pool, src_prop, src_prop_len) : UFBXWI_TOKEN_NONE;
+	ufbxwi_token dst_token = dst_prop_len > 0 ? ufbxwi_get_token(&scene->string_pool, dst_prop, dst_prop_len) : UFBXWI_TOKEN_NONE;
+	if ((src_prop_len > 0 && !src_token) || (dst_prop_len > 0 && !dst_token)) return;
+
+	for (uint32_t i = 1; i < UFBXW_CONNECTION_TYPE_COUNT; i++) {
+		ufbxw_connection_type conn_type = (ufbxw_connection_type)i;
+		if (ufbxwi_disconnect_imp(scene, conn_type, src, dst, src_token, dst_token)) break;
 	}
 }
 
@@ -13161,6 +13264,13 @@ ufbxw_abi void ufbxw_node_set_material(ufbxw_scene *scene, ufbxw_node node, size
 	ufbxw_material prev = nd->materials.data[index];
 	if (prev.id == material.id) return;
 
+	ufbxwi_material *new_mat = NULL;
+	if (material.id != 0) {
+		new_mat = ufbxwi_get_material(scene, material);
+		ufbxwi_check_element(scene, material.id, new_mat);
+		ufbxwi_check(ufbxwi_id_list_add(&scene->ator, &new_mat->conn_nodes, node.id));
+	}
+
 	if (prev.id != 0) {
 		ufbxwi_material *prev_mat = ufbxwi_get_material(scene, prev);
 		if (prev_mat) {
@@ -13170,12 +13280,6 @@ ufbxw_abi void ufbxw_node_set_material(ufbxw_scene *scene, ufbxw_node node, size
 	}
 
 	nd->materials.data[index] = material;
-
-	if (material.id != 0) {
-		ufbxwi_material *new_mat = ufbxwi_get_material(scene, material);
-		ufbxwi_check_element(scene, material.id, new_mat);
-		ufbxwi_check(ufbxwi_id_list_add(&scene->ator, &new_mat->conn_nodes, node.id));
-	}
 }
 
 ufbxw_abi ufbxw_material ufbxw_node_get_material(ufbxw_scene *scene, ufbxw_node node, size_t index)

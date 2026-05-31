@@ -66,6 +66,31 @@ UFBXWT_TEST(node_wrong_type)
 }
 #endif
 
+UFBXWT_TEST(node_material_wrong_type)
+#if UFBXWT_IMPL
+{
+	ufbxw_scene *scene = ufbxw_create_scene(NULL);
+	ufbxwt_assert(scene);
+
+	ufbxw_error error = { UFBXW_ERROR_NONE };
+	ufbxw_set_error_callback(scene, &ufbxwt_capture_error, &error);
+
+	ufbxw_node node = ufbxwt_create_node(scene, "Node");
+	ufbxw_material material = ufbxw_create_material(scene, UFBXW_MATERIAL_FBX_LAMBERT);
+	ufbxw_node_set_material(scene, node, 0, material);
+
+	ufbxw_mesh mesh = ufbxw_create_mesh(scene);
+	ufbxw_material fake_material = { mesh.id };
+
+	ufbxw_node_set_material(scene, node, 0, fake_material);
+
+	ufbxwt_assert_error(&error, UFBXW_ERROR_ELEMENT_WRONG_TYPE, "ufbxw_node_set_material", "wrong type: mesh");
+	ufbxwt_assert(ufbxw_node_get_material(scene, node, 0).id == material.id);
+
+	ufbxw_free_scene(scene);
+}
+#endif
+
 UFBXWT_TEST(error_out_of_bounds)
 #if UFBXWT_IMPL
 {
