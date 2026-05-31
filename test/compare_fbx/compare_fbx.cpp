@@ -367,7 +367,7 @@ static void compare_skin(ufbx_skin_deformer* src_skin, ufbx_skin_deformer* ref_s
 		ufbx_skin_cluster *ref_cluster = ref_skin->clusters[cluster_ix];
 
 		ufbx_node* src_node = src_cluster->bone_node;
-		ufbx_node *ref_node = src_cluster->bone_node;
+		ufbx_node *ref_node = ref_cluster->bone_node;
 		check_equal(src_node, ref_node, name);
 
 		check_list_equal(src_cluster, ref_cluster, vertices);
@@ -555,7 +555,7 @@ static void compare_node(ufbx_node *src_node, ufbx_node *ref_node, bool full)
 		check_equal(src_node, ref_node, materials.count);
 		for (size_t mat_ix = 0; mat_ix < min(src_node->materials.count, ref_node->materials.count); mat_ix++) {
 			compare_scope scope { "material %zu", mat_ix };
-			
+
 			ufbx_material *src_material = src_node->materials[mat_ix];
 			ufbx_material *ref_material = ref_node->materials[mat_ix];
 			check_equal(src_material, ref_material, typed_id);

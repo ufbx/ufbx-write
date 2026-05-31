@@ -328,7 +328,9 @@ if __name__ == "__main__":
 
     async def run_cases_simple():
         for case in cases:
-            await run_case(False, case)
+            lines = await run_case(argv.quiet, case)
+            if lines:
+                print("\n".join(lines))
 
     async def run_cases_threaded():
         tasks = []

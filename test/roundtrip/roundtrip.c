@@ -687,7 +687,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	// Skinning 
+	// Skinning
 	for (size_t skin_ix = 0; skin_ix < in_scene->skin_deformers.count; skin_ix++) {
 		ufbx_skin_deformer *in_skin = in_scene->skin_deformers.data[skin_ix];
 		ufbxw_skin_deformer out_skin = ufbxw_create_skin_deformer(out_scene, ufbxw_null_mesh);
