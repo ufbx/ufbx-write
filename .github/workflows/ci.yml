@@ -125,11 +125,13 @@ jobs:
           sudo apt-get install -y uncrustify
 
       - name: Format ufbx_write.c
+        if: ${{ always() && !cancelled() }}
         run: |
           uncrustify -c misc/uncrustify.cfg ufbx_write.c
           diff -u ufbx_write.c ufbx_write.c.uncrustify
 
       - name: Format ufbx_write.h
+        if: ${{ always() && !cancelled() }}
         run: |
           uncrustify -c misc/uncrustify.cfg ufbx_write.h
           diff -u ufbx_write.h ufbx_write.h.uncrustify
