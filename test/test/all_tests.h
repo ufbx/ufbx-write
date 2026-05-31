@@ -15,3 +15,4 @@
 #include "test_deflate.h"
 #include "test_ascii.h"
 #include "test_binary.h"
+#include "test_api.h"

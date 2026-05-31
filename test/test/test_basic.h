@@ -155,4 +155,3 @@ UFBXWT_SCENE_CHECK(simple_node)
 	ufbxwt_assert_close_uvec3(err, node->local_transform.scale, scale);
 }
 #endif
-

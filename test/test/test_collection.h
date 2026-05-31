@@ -150,3 +150,35 @@ UFBXWT_SCENE_CHECK(selection_set_simple)
 	}
 }
 #endif
+
+UFBXWT_SCENE_TEST(selection_node_reconnect)
+#if UFBXWT_IMPL
+{
+	ufbxw_node node_a = ufbxwt_create_node(scene, "TargetA");
+	ufbxw_node node_b = ufbxwt_create_node(scene, "TargetB");
+
+	ufbxw_selection_set set = ufbxw_create_selection_set(scene);
+	ufbxw_set_name(scene, set.id, "ReconnectSet");
+
+	ufbxw_selection_node selection = ufbxw_create_selection_node(scene, set);
+	ufbxw_set_name(scene, selection.id, "ReconnectSelection");
+
+	ufbxw_selection_node_set_node(scene, selection, node_a);
+	ufbxw_selection_node_set_node(scene, selection, node_b);
+}
+#endif
+
+UFBXWT_SCENE_CHECK(selection_node_reconnect)
+#if UFBXWT_IMPL
+{
+	ufbx_node *node_b = ufbx_find_node(scene, "TargetB");
+	ufbxwt_assert(node_b);
+
+	ufbx_selection_set *set = (ufbx_selection_set*)ufbx_find_element(scene, UFBX_ELEMENT_SELECTION_SET, "ReconnectSet");
+	ufbxwt_assert(set);
+	ufbxwt_assert(set->nodes.count == 1);
+
+	ufbx_selection_node *selection = set->nodes.data[0];
+	ufbxwt_assert(selection->target_node == node_b);
+}
+#endif

@@ -7891,6 +7891,24 @@ static void ufbxwi_disconnect_all_src(ufbxw_scene *scene, ufbxw_connection_type 
 	}
 }
 
+static void ufbxwi_set_dst_connection(ufbxw_scene *scene, ufbxw_connection_type type, ufbxw_id src_id, ufbxw_id dst_id)
+{
+	if (dst_id == ufbxw_null_id) {
+		ufbxwi_disconnect_all_dst(scene, type, src_id);
+	} else {
+		ufbxwi_connect(scene, type, src_id, dst_id, UFBXWI_CONNECT_FLAG_DISCONNECT_SRC);
+	}
+}
+
+static void ufbxwi_set_src_connection(ufbxw_scene *scene, ufbxw_connection_type type, ufbxw_id src_id, ufbxw_id dst_id)
+{
+	if (src_id == ufbxw_null_id) {
+		ufbxwi_disconnect_all_src(scene, type, dst_id);
+	} else {
+		ufbxwi_connect(scene, type, src_id, dst_id, UFBXWI_CONNECT_FLAG_DISCONNECT_DST);
+	}
+}
+
 static void ufbxwi_collect_src_connections(const ufbxw_scene *scene, ufbxwi_allocator *ator, ufbxwi_conn_list *conns, ufbxw_connection_type type, ufbxwi_element *dst_elem)
 {
 	ufbxwi_connection_info info = ufbxwi_connection_infos[type];
@@ -13530,16 +13548,12 @@ ufbxw_abi ufbxw_matrix ufbxw_node_get_global_transform(ufbxw_scene *scene, ufbxw
 
 ufbxw_abi void ufbxw_node_set_attribute(ufbxw_scene *scene, ufbxw_node node, ufbxw_id attrib)
 {
-	ufbxwi_connect(scene, UFBXW_CONNECTION_NODE_ATTRIBUTE, attrib, node.id, UFBXWI_CONNECT_FLAG_DISCONNECT_DST);
+	ufbxwi_set_src_connection(scene, UFBXW_CONNECTION_NODE_ATTRIBUTE, attrib, node.id);
 }
 
 ufbxw_abi void ufbxw_node_set_parent(ufbxw_scene *scene, ufbxw_node node, ufbxw_node parent)
 {
-	if (parent.id == ufbxw_null_id) {
-		ufbxwi_disconnect_all_dst(scene, UFBXW_CONNECTION_NODE_PARENT, node.id);
-	} else {
-		ufbxwi_connect(scene, UFBXW_CONNECTION_NODE_PARENT, node.id, parent.id, UFBXWI_CONNECT_FLAG_DISCONNECT_SRC);
-	}
+	ufbxwi_set_dst_connection(scene, UFBXW_CONNECTION_NODE_PARENT, node.id, parent.id);
 }
 
 ufbxw_abi ufbxw_node ufbxw_node_get_parent(ufbxw_scene *scene, ufbxw_node node)
@@ -13938,12 +13952,12 @@ ufbxw_abi ufbxw_skin_cluster ufbxw_create_skin_cluster(ufbxw_scene *scene, ufbxw
 
 ufbxw_abi void ufbxw_skin_cluster_set_deformer(ufbxw_scene *scene, ufbxw_skin_cluster cluster, ufbxw_skin_deformer skin)
 {
-	ufbxwi_connect(scene, UFBXW_CONNECTION_SKIN_CLUSTER, cluster.id, skin.id, UFBXWI_CONNECT_FLAG_DISCONNECT_SRC);
+	ufbxwi_set_dst_connection(scene, UFBXW_CONNECTION_SKIN_CLUSTER, cluster.id, skin.id);
 }
 
 ufbxw_abi void ufbxw_skin_cluster_set_node(ufbxw_scene *scene, ufbxw_skin_cluster cluster, ufbxw_node node)
 {
-	ufbxwi_connect(scene, UFBXW_CONNECTION_SKIN_CLUSTER_NODE, node.id, cluster.id, UFBXWI_CONNECT_FLAG_DISCONNECT_DST);
+	ufbxwi_set_src_connection(scene, UFBXW_CONNECTION_SKIN_CLUSTER_NODE, node.id, cluster.id);
 }
 
 ufbxw_abi void ufbxw_skin_cluster_set_weights(ufbxw_scene *scene, ufbxw_skin_cluster cluster, ufbxw_int_buffer indices, ufbxw_real_buffer weights)
@@ -13998,14 +14012,14 @@ ufbxw_abi ufbxw_blend_channel ufbxw_create_blend_channel(ufbxw_scene *scene, ufb
 
 ufbxw_abi void ufbxw_blend_channel_set_deformer(ufbxw_scene *scene, ufbxw_blend_channel channel, ufbxw_blend_deformer deformer)
 {
-	// TODO: Allow these to be null to disconnect?
-	ufbxwi_connect(scene, UFBXW_CONNECTION_BLEND_CHANNEL, channel.id, deformer.id, UFBXWI_CONNECT_FLAG_DISCONNECT_SRC);
+	ufbxwi_set_dst_connection(scene, UFBXW_CONNECTION_BLEND_CHANNEL, channel.id, deformer.id);
 }
 
 ufbxw_abi void ufbxw_blend_channel_set_shape(ufbxw_scene *scene, ufbxw_blend_channel channel, ufbxw_blend_shape shape)
 {
 	// TODO: Test and hack RootGroup to prepare scene?
 	ufbxwi_disconnect_all_src(scene, UFBXW_CONNECTION_BLEND_SHAPE, channel.id);
+	if (shape.id == ufbxw_null_id) return;
 	ufbxw_blend_channel_add_shape(scene, channel, shape, 100.0);
 }
 
@@ -14103,11 +14117,7 @@ ufbxw_abi void ufbxw_cache_deformer_set_channel_name_len(ufbxw_scene *scene, ufb
 
 ufbxw_abi void ufbxw_cache_deformer_set_cache_file(ufbxw_scene *scene, ufbxw_cache_deformer deformer, ufbxw_cache_file cache)
 {
-	if (cache.id == ufbxw_null_id) {
-		ufbxwi_disconnect_all_src(scene, UFBXW_CONNECTION_CACHE_FILE, cache.id);
-	} else {
-		ufbxwi_connect(scene, UFBXW_CONNECTION_CACHE_FILE, cache.id, deformer.id, UFBXWI_CONNECT_FLAG_DISCONNECT_SRC);
-	}
+	ufbxwi_set_src_connection(scene, UFBXW_CONNECTION_CACHE_FILE, cache.id, deformer.id);
 }
 
 ufbxw_abi ufbxw_cache_file ufbxw_cache_deformer_get_cache_file(ufbxw_scene *scene, ufbxw_cache_deformer deformer)
@@ -14199,11 +14209,7 @@ ufbxw_abi ufbxw_material ufbxw_create_material(ufbxw_scene *scene, ufbxw_materia
 
 ufbxw_abi void ufbxw_material_set_implementation(ufbxw_scene *scene, ufbxw_material material, ufbxw_implementation implementation)
 {
-	if (implementation.id == ufbxw_null_id) {
-		ufbxwi_disconnect_all_src(scene, UFBXW_CONNECTION_MATERIAL_IMPLEMENTATION, implementation.id);
-	} else {
-		ufbxwi_connect(scene, UFBXW_CONNECTION_MATERIAL_IMPLEMENTATION, material.id, implementation.id, UFBXWI_CONNECT_FLAG_DISCONNECT_DST);
-	}
+	ufbxwi_set_dst_connection(scene, UFBXW_CONNECTION_MATERIAL_IMPLEMENTATION, material.id, implementation.id);
 }
 
 ufbxw_abi ufbxw_implementation ufbxw_material_get_implementation(ufbxw_scene *scene, ufbxw_material material)
@@ -14238,7 +14244,7 @@ ufbxw_abi ufbxw_texture ufbxw_create_texture(ufbxw_scene *scene, ufbxw_texture_t
 
 ufbxw_abi void ufbxw_texture_set_video(ufbxw_scene *scene, ufbxw_texture texture, ufbxw_video video)
 {
-	ufbxwi_connect(scene, UFBXW_CONNECTION_VIDEO_TEXTURE, video.id, texture.id, UFBXWI_CONNECT_FLAG_DISCONNECT_DST);
+	ufbxwi_set_src_connection(scene, UFBXW_CONNECTION_VIDEO_TEXTURE, video.id, texture.id);
 }
 
 ufbxw_abi ufbxw_video ufbxw_texture_get_video(ufbxw_scene *scene, ufbxw_texture texture)
@@ -14305,11 +14311,7 @@ ufbxw_abi ufbxw_string ufbxw_implementation_get_render_api(ufbxw_scene *scene, u
 
 ufbxw_abi void ufbxw_implementation_set_binding_table(ufbxw_scene *scene, ufbxw_implementation implementation, ufbxw_binding_table binding_table)
 {
-	if (binding_table.id == ufbxw_null_id) {
-		ufbxwi_disconnect_all_src(scene, UFBXW_CONNECTION_BINDING_IMPLEMENTATION, implementation.id);
-	} else {
-		ufbxwi_connect(scene, UFBXW_CONNECTION_BINDING_IMPLEMENTATION, binding_table.id, implementation.id, UFBXWI_CONNECT_FLAG_DISCONNECT_DST);
-	}
+	ufbxwi_set_src_connection(scene, UFBXW_CONNECTION_BINDING_IMPLEMENTATION, binding_table.id, implementation.id);
 }
 
 ufbxw_abi ufbxw_binding_table ufbxw_implementation_get_binding_table(ufbxw_scene *scene, ufbxw_implementation implementation)
@@ -14398,7 +14400,7 @@ ufbxw_abi ufbxw_selection_set ufbxw_create_selection_set(ufbxw_scene *scene)
 
 ufbxw_abi void ufbxw_selection_set_add_node(ufbxw_scene *scene, ufbxw_selection_set set, ufbxw_selection_node node)
 {
-	ufbxwi_connect(scene, UFBXW_CONNECTION_SELECTION_SET_NODE, node.id, set.id, UFBXWI_CONNECT_FLAG_DISCONNECT_SRC);
+	ufbxwi_set_dst_connection(scene, UFBXW_CONNECTION_SELECTION_SET_NODE, node.id, set.id);
 }
 
 ufbxw_abi ufbxw_selection_node ufbxw_create_selection_node(ufbxw_scene *scene, ufbxw_selection_set set)
@@ -14412,7 +14414,7 @@ ufbxw_abi ufbxw_selection_node ufbxw_create_selection_node(ufbxw_scene *scene, u
 
 ufbxw_abi void ufbxw_selection_node_set_node(ufbxw_scene *scene, ufbxw_selection_node selection, ufbxw_node node)
 {
-	ufbxwi_connect(scene, UFBXW_CONNECTION_SELECTION_NODE_NODE, node.id, selection.id, UFBXWI_CONNECT_FLAG_DISCONNECT_SRC);
+	ufbxwi_set_src_connection(scene, UFBXW_CONNECTION_SELECTION_NODE_NODE, node.id, selection.id);
 }
 
 ufbxw_abi void ufbxw_selection_node_set_include_node(ufbxw_scene *scene, ufbxw_selection_node selection, bool included)
@@ -14539,7 +14541,7 @@ ufbxw_abi void ufbxw_anim_layer_set_weight(ufbxw_scene *scene, ufbxw_anim_layer 
 
 ufbxw_abi void ufbxw_anim_layer_set_stack(ufbxw_scene *scene, ufbxw_anim_layer layer, ufbxw_anim_stack stack)
 {
-	ufbxwi_connect(scene, UFBXW_CONNECTION_ANIM_LAYER_STACK, layer.id, stack.id, UFBXWI_CONNECT_FLAG_DISCONNECT_SRC);
+	ufbxwi_set_dst_connection(scene, UFBXW_CONNECTION_ANIM_LAYER_STACK, layer.id, stack.id);
 }
 
 ufbxw_abi ufbxw_anim_curve ufbxw_anim_get_curve(ufbxw_scene *scene, ufbxw_anim_prop anim, size_t index)
@@ -14654,7 +14656,7 @@ ufbxw_abi void ufbxw_anim_finish_keyframes(ufbxw_scene *scene, ufbxw_anim_prop a
 
 ufbxw_abi void ufbxw_anim_set_layer(ufbxw_scene *scene, ufbxw_anim_prop anim, ufbxw_anim_layer layer)
 {
-	ufbxwi_connect(scene, UFBXW_CONNECTION_ANIM_PROP_LAYER, anim.id, layer.id, UFBXWI_CONNECT_FLAG_DISCONNECT_SRC);
+	ufbxwi_set_dst_connection(scene, UFBXW_CONNECTION_ANIM_PROP_LAYER, anim.id, layer.id);
 }
 
 ufbxw_abi void ufbxw_anim_curve_add_keyframe(ufbxw_scene *scene, ufbxw_anim_curve curve, ufbxw_ktime time, ufbxw_real value, uint32_t type)
