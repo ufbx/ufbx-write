@@ -7848,7 +7848,7 @@ static void ufbxwi_disconnect_all_src(ufbxw_scene *scene, ufbxw_connection_type 
 		void *src_data = (char*)src_elem + ufbxwi_conn_offset(info.src_conn);
 
 		uint64_t src_bits = src_elem->conn_bits | (UFBXWI_CONN_BIT_PROPERTY | UFBXWI_CONN_BIT_ELEMENT);
-		ufbxw_assert((src_bits & info.src_mask) != info.src_mask);
+		ufbxw_assert((src_bits & info.src_mask) == info.src_mask);
 
 		ufbxwi_conn_remove_all(scene, src_type, src_data, dst_id);
 	}
