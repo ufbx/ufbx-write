@@ -526,6 +526,8 @@ int main(int argc, char **argv)
 		case UFBX_SHADER_FBX_PHONG:
 			material_type = UFBXW_MATERIAL_FBX_PHONG;
 			break;
+		default:
+			break;
 		}
 
 		ufbxw_material out_material = ufbxw_create_material(out_scene, material_type);
@@ -946,6 +948,9 @@ int main(int argc, char **argv)
 									out_key.flags |= UFBXW_KEYFRAME_WEIGHTED_RIGHT;
 								}
 							}
+							break;
+						default:
+							ufbxwt_assert(0 && "unhandled interpolation mode");
 							break;
 						}
 
