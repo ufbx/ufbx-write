@@ -1014,8 +1014,8 @@ int main(int argc, char **argv)
 	ufbxwt_assert(ufbxwt_ascii_format_setup(&save_opts.ascii_formatter, ascii_impl));
 	ufbxwt_assert(ufbxwt_thread_setup(&save_opts.thread_sync, &save_opts.thread_pool, thread_impl));
 
-	ufbxw_write_buffer memory_buffer;
-	compare_fbx_input compare_input;
+	ufbxw_write_buffer memory_buffer = { 0 };
+	compare_fbx_input compare_input = { 0 };
 
 	ufbxw_error save_error;
 	bool save_ok = false;
