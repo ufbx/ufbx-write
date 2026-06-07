@@ -14985,9 +14985,9 @@ ufbxw_abi ufbxw_coordinate_axes ufbxw_scene_get_coordinate_axes(ufbxw_scene *sce
 	ufbxwi_global_settings *gs = ufbxwi_get_global_settings_by_id(scene, scene->global_settings_id);
 	if (!gs) return axes;
 
-	axes.right = (ufbxw_coordinate_axis)((gs->coord_axis << 1) | (gs->coord_axis_sign > 0 ? 1 : 0));
-	axes.up = (ufbxw_coordinate_axis)((gs->up_axis << 1) | (gs->up_axis_sign > 0 ? 1 : 0));
-	axes.front = (ufbxw_coordinate_axis)((gs->front_axis << 1) | (gs->front_axis_sign > 0 ? 1 : 0));
+	axes.right = (ufbxw_coordinate_axis)((gs->coord_axis << 1) | (gs->coord_axis_sign < 0 ? 1 : 0));
+	axes.up = (ufbxw_coordinate_axis)((gs->up_axis << 1) | (gs->up_axis_sign < 0 ? 1 : 0));
+	axes.front = (ufbxw_coordinate_axis)((gs->front_axis << 1) | (gs->front_axis_sign < 0 ? 1 : 0));
 	return axes;
 }
 
