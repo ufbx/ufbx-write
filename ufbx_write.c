@@ -14761,7 +14761,7 @@ ufbxw_abi void ufbxw_anim_add_keyframe_vec2_key(ufbxw_scene *scene, ufbxw_anim_p
 ufbxw_abi void ufbxw_anim_add_keyframe_vec3_key(ufbxw_scene *scene, ufbxw_anim_prop anim, ufbxw_keyframe_vec3 key)
 {
 	ufbxwi_anim_prop *ap = ufbxwi_get_anim_prop(scene, anim);
-	if (!ap || ap->curves.count < 2) return;
+	if (!ap || ap->curves.count < 3) return;
 
 	ufbxwi_conn *curves = ap->curves.data;
 
