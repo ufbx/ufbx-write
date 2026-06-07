@@ -457,7 +457,7 @@
 
 // -- Version
 
-#define UFBXW_SOURCE_VERSION ufbxw_pack_version(0, 1, 0)
+#define UFBXW_SOURCE_VERSION ufbxw_pack_version(0, 2, 0)
 ufbxw_abi_data_def const uint32_t ufbxw_source_version = UFBXW_SOURCE_VERSION;
 
 ufbxw_static_assert(source_header_version, UFBXW_SOURCE_VERSION/1000U == UFBXW_HEADER_VERSION/1000U);
@@ -12073,11 +12073,18 @@ static void ufbxwi_save_root(ufbxwi_save_context *sc)
 {
 	ufbxw_scene *scene = sc->scene;
 
+	char creator_buf[64];
+
 	ufbxw_string creator;
 	if (sc->opts.enable_override_creator) {
 		creator = sc->opts.override_creator;
 	} else {
-		creator = ufbxwi_c_str("ufbx_write (version format TBD)");
+		snprintf(creator_buf, sizeof(creator_buf), "ufbx_write v%u.%u.%u",
+			ufbxw_version_major(UFBXW_SOURCE_VERSION),
+			ufbxw_version_minor(UFBXW_SOURCE_VERSION),
+			ufbxw_version_patch(UFBXW_SOURCE_VERSION));
+
+		creator = ufbxwi_c_str(creator_buf);
 	}
 
 	ufbxw_datetime timestamp = sc->opts.local_timestamp;
