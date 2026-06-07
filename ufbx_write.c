@@ -505,7 +505,7 @@ static ufbxwi_forceinline void ufbxwi_swap(void *a, void *b, size_t size)
 // Stable sort array `m_type m_data[m_size]` using the predicate `m_cmp_lambda(a, b)`
 // `m_linear_size` is a hint for how large blocks handle initially do with insertion sort
 // `m_tmp` must be a memory buffer with at least the same size and alignment as `m_data`
-#define ufbxwwi_macro_stable_sort(m_type, m_linear_size, m_data, m_tmp, m_size, m_cmp_lambda) do { \
+#define ufbxwi_macro_stable_sort(m_type, m_linear_size, m_data, m_tmp, m_size, m_cmp_lambda) do { \
 	typedef m_type mi_type; \
 	mi_type *mi_src = (mi_type*)(m_tmp); \
 	mi_type *mi_data = m_data, *mi_dst = mi_data; \
@@ -8652,7 +8652,7 @@ static void ufbxwi_sort_anim_kefyrames(ufbxw_scene *scene, ufbxwi_anim_curve *c)
 		keys[i].attr_index = c->key_attr_indices.data[i];
 	}
 
-	ufbxwwi_macro_stable_sort(ufbxwi_sort_keyframe, 16, keys, tmp_keys, key_count, ( a->time < b->time ));
+	ufbxwi_macro_stable_sort(ufbxwi_sort_keyframe, 16, keys, tmp_keys, key_count, ( a->time < b->time ));
 
 	// Store back and remove duplicate keys
 	size_t dst_count = 0;
