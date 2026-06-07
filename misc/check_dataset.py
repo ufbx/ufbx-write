@@ -164,7 +164,8 @@ if __name__ == "__main__":
     parser.add_argument("--include-recent", action="store_true", help="Run tests that are too recent")
     parser.add_argument("--threads", type=int, default=1, help="Number of threads to use for running")
     parser.add_argument("--quiet", action="store_true", help="Do not print successful test information")
-    parser.add_argument("--list", help="Specify a list of files in a .json format")
+    parser.add_argument("--include-list", help="Specify an include list of files in a .json format")
+    parser.add_argument("--exclude-list", help="Specify an exclude list of files in a .json format")
     argv = parser.parse_args()
 
     host_url = argv.host_url if argv.host_url else argv.root
@@ -174,11 +175,15 @@ if __name__ == "__main__":
     if argv.include_recent:
         latest_supported_time = None
 
-    case_set = None
-    if argv.list:
-        with open(argv.list, "rt", encoding="utf-8") as f:
+    def load_case_list(path):
+        if not path:
+            return None
+        with open(path, "rt", encoding="utf-8") as f:
             case_list = json.load(f)
-        case_set = set(case_list["cases"])
+        return set(case_list["cases"])
+
+    include_set = load_case_list(argv.include_list)
+    exclude_set = load_case_list(argv.exclude_list)
 
     cases = list(gather_dataset_tasks(root_dir=argv.root, heavy=argv.heavy, allow_unknown=argv.allow_unknown, last_supported_time=latest_supported_time))
 
@@ -197,8 +202,11 @@ if __name__ == "__main__":
 
     def case_filter(case):
         rel_path = fmt_rel(case.json_path, argv.root)
-        if case_set is not None:
-            return rel_path in case_set
+        if include_set is not None and rel_path not in include_set:
+            return False
+        if exclude_set is not None and rel_path in exclude_set:
+            return False
+        return True
 
     cases = [c for c in cases if case_filter(c)]
 

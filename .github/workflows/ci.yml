@@ -142,7 +142,7 @@ jobs:
       - name: Compile roundtrip
         run: cmake --build build-test --target roundtrip -j 4
       - name: Run dataset tests
-        run: python3 misc/check_dataset.py --exe build-test/roundtrip/roundtrip --root /mnt/fbx-files --list /mnt/fbx-files/roundtrip.list.json --host-url https://ufbx-dataset.b-cdn.net --threads 4
+        run: python3 misc/check_dataset.py --exe build-test/roundtrip/roundtrip --root /mnt/fbx-files --exclude-list /mnt/fbx-files/roundtrip_exclude.list.json --host-url https://ufbx-dataset.b-cdn.net --threads 4
       - name: Generate coverage
         run: LLVM_COV=llvm-cov bash misc/generate_lcov.sh
       - name: Upload coverage
