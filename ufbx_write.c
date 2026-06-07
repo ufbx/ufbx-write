@@ -8319,7 +8319,10 @@ static void ufbxwi_init_scene(ufbxw_scene *scene)
 
 	if (scene->opts.no_default_elements) {
 		scene->opts.no_default_scene_info = true;
+		scene->opts.no_default_global_settings = true;
 		scene->opts.no_default_document = true;
+		scene->opts.no_default_anim_stack = true;
+		scene->opts.no_default_anim_layer = true;
 	}
 
 	// size_t num_prop_types = (size_t)UFBXW_PROP_FIRST_USER;
