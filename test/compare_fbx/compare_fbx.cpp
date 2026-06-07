@@ -602,6 +602,23 @@ static void compare_material(ufbx_material *src_material, ufbx_material *ref_mat
 	}
 }
 
+static void compare_save_info(ufbx_scene *src_scene, ufbx_scene *ref_scene)
+{
+	compare_scope scope { "save info" };
+
+	ufbx_metadata *src_meta = &src_scene->metadata;
+	ufbx_metadata *ref_meta = &ref_scene->metadata;
+
+	check_equal(src_meta, ref_meta, original_file_path);
+
+	{
+		compare_scope scope { "latest application" };
+		check_equal(&src_meta->latest_application, &ref_meta->latest_application, vendor);
+		check_equal(&src_meta->latest_application, &ref_meta->latest_application, name);
+		check_equal(&src_meta->latest_application, &ref_meta->latest_application, version);
+	}
+}
+
 static void compare_scene(ufbx_scene *src_scene, ufbx_scene *ref_scene, bool full)
 {
 	check_equal(src_scene, ref_scene, nodes.count);
@@ -702,6 +719,10 @@ extern "C" bool compare_fbx(compare_fbx_input input, const char *ref_path, const
 	}
 
 	compare_scene(src_scene, ref_scene, true);
+
+	if (opts->compare_save_info) {
+		compare_save_info(src_scene, ref_scene);
+	}
 
 	if (opts->compare_anim) {
 		check_equal(src_scene, ref_scene, anim_stacks.count);

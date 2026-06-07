@@ -86,6 +86,12 @@ static ufbxw_vec4 to_ufbxw_vec4(ufbx_vec4 v)
 	return r;
 }
 
+static ufbxw_string to_ufbxw_string(ufbx_string v)
+{
+	ufbxw_string r = { v.data, v.length };
+	return r;
+}
+
 static ufbxw_vec3 to_ufbxw_euler(ufbx_quat v)
 {
 	ufbx_vec3 euler = ufbx_quat_to_euler(v, UFBX_ROTATION_ORDER_XYZ);
@@ -412,6 +418,28 @@ int main(int argc, char **argv)
 
 		ufbxw_scene_set_time_mode(out_scene, time_mode);
 		ufbxw_scene_set_custom_frame_rate(out_scene, custom_frame_rate);
+	}
+
+	// Save info
+	{
+		ufbx_metadata *metadata = &in_scene->metadata;
+
+		ufbxw_save_info info = { 0 };
+		info.document_url = to_ufbxw_string(metadata->original_file_path);
+		info.src_document_url = to_ufbxw_string(ufbx_find_string(&metadata->scene_props, "SrcDocumentUrl", metadata->original_file_path));
+		info.original_filename = to_ufbxw_string(ufbx_find_string(&metadata->scene_props, "Original|Filename", metadata->original_file_path));
+
+		info.application_vendor = to_ufbxw_string(metadata->latest_application.vendor);
+		info.application_name = to_ufbxw_string(metadata->latest_application.name);
+		info.application_version = to_ufbxw_string(metadata->latest_application.version);
+
+		info.original_application_vendor = to_ufbxw_string(metadata->original_application.vendor);
+		info.original_application_name = to_ufbxw_string(metadata->original_application.name);
+		info.original_application_version = to_ufbxw_string(metadata->original_application.version);
+
+		info.no_default_date_time = true;
+
+		ufbxw_set_save_info(out_scene, &info);
 	}
 
 	ufbxw_mesh *mesh_ids = (ufbxw_mesh*)calloc(in_scene->meshes.count, sizeof(ufbxw_mesh));
@@ -1043,6 +1071,7 @@ int main(int argc, char **argv)
 		compare_fbx_opts compare_opts = { 0 };
 		compare_opts.approx_epsilon = 1e-3;
 		compare_opts.compare_anim = true;
+		compare_opts.compare_save_info = true;
 
 		compare_fbx_input input = { 0 };
 		if (output_path) {

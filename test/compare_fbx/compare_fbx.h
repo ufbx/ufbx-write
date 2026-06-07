@@ -6,6 +6,7 @@ typedef struct compare_fbx_opts {
 	double approx_epsilon;
 	bool compare_anim;
 	bool evaluate_scene_anim;
+	bool compare_save_info;
 } compare_fbx_opts;
 
 typedef struct compare_fbx_input {
