@@ -357,6 +357,7 @@ typedef enum ufbxw_error_type {
 	UFBXW_ERROR_ASCII_FORMAT,
 	UFBXW_ERROR_THREAD_SYNC_INIT,
 	UFBXW_ERROR_THREAD_POOL_INIT,
+	UFBXW_ERROR_STREAM_BEGIN,
 
 } ufbxw_error_type;
 
@@ -1425,6 +1426,9 @@ ufbxw_abi void ufbxw_validate_scene(const ufbxw_scene *scene);
 
 // -- IO callbacks
 
+// Begin writing to a stream
+typedef bool ufbxw_begin_fn(void *user, uint64_t required_size);
+
 // Write at a specified offset in the file
 typedef bool ufbxw_write_fn(void *user, uint64_t offset, const void *data, size_t size);
 
@@ -1432,6 +1436,7 @@ typedef bool ufbxw_write_fn(void *user, uint64_t offset, const void *data, size_
 typedef void ufbxw_close_fn(void *user);
 
 typedef struct ufbxw_write_stream {
+	ufbxw_begin_fn *begin_fn; // < Optional
 	ufbxw_write_fn *write_fn; // < Required
 	ufbxw_close_fn *close_fn; // < Optional
 
@@ -1440,6 +1445,23 @@ typedef struct ufbxw_write_stream {
 } ufbxw_write_stream;
 
 ufbxw_abi bool ufbxw_open_file_write(ufbxw_write_stream *stream, const char *path, size_t path_len, ufbxw_error *error);
+
+typedef void *ufbxw_result_alloc_fn(void *user, size_t size);
+
+// Callback for allocating a result `ufbx_write_buffer`
+typedef struct ufbxw_result_alloc_cb {
+	ufbxw_result_alloc_fn *fn;
+	void *user;
+} ufbxw_result_alloc_cb;
+
+typedef struct ufbxw_write_buffer {
+	void *data;
+	size_t size;
+} ufbxw_write_buffer;
+
+// Free a `ufbxw_write_buffer` that uses the default allocator.
+// NOTE: If you use a custom `ufbxw_result_alloc_cb` you are responsible for freeing the buffer yourself.
+ufbxw_abi void ufbxw_free_write_buffer(ufbxw_write_buffer buffer);
 
 // TODO: Unify all these kind of APIs, they're all a bit different now...
 // TODO: Formatter issue on function typedefs
@@ -1601,6 +1623,10 @@ typedef struct ufbxw_save_opts {
 
 	ufbxw_allocator allocator;
 
+	// Callback for allocating the result memory.
+	// NOTE: Only applies to `ufbxw_save_memory()`
+	ufbxw_result_alloc_cb result_alloc_cb;
+
 	// Compression level.
 	// Defaults to `6`.
 	int32_t compression_level;
@@ -1611,6 +1637,9 @@ typedef struct ufbxw_save_opts {
 
 	// How to format floating point numbers in ASCII files.
 	ufbxw_ascii_float_format ascii_float_format;
+
+	// If enabled, ufbx_write will buffer all output to memory before writing it to the stream.
+	bool buffer_writes;
 
 	// Do not compress binary data
 	bool disable_compression;
@@ -1657,10 +1686,12 @@ typedef struct ufbxw_save_stats {
 
 ufbxw_abi bool ufbxw_save_file(ufbxw_scene *scene, const char *path, const ufbxw_save_opts *opts, ufbxw_error *error);
 ufbxw_abi bool ufbxw_save_file_len(ufbxw_scene *scene, const char *path, size_t path_len, const ufbxw_save_opts *opts, ufbxw_error *error);
+ufbxw_abi bool ufbxw_save_memory(ufbxw_scene *scene, ufbxw_write_buffer *buffer, const ufbxw_save_opts *opts, ufbxw_error *error);
 ufbxw_abi bool ufbxw_save_stream(ufbxw_scene *scene, ufbxw_write_stream *stream, const ufbxw_save_opts *opts, ufbxw_error *error);
 
 ufbxw_abi bool ufbxw_save_file_ex(ufbxw_scene *scene, const char *path, const ufbxw_save_opts *opts, ufbxw_error *error, ufbxw_save_stats *stats);
 ufbxw_abi bool ufbxw_save_file_ex_len(ufbxw_scene *scene, const char *path, size_t path_len, const ufbxw_save_opts *opts, ufbxw_error *error, ufbxw_save_stats *stats);
+ufbxw_abi bool ufbxw_save_memory_ex(ufbxw_scene *scene, ufbxw_write_buffer *buffer, const ufbxw_save_opts *opts, ufbxw_error *error, ufbxw_save_stats *stats);
 ufbxw_abi bool ufbxw_save_stream_ex(ufbxw_scene *scene, ufbxw_write_stream *stream, const ufbxw_save_opts *opts, ufbxw_error *error, ufbxw_save_stats *stats);
 
 // -- Thread pool

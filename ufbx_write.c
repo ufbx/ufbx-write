@@ -9055,6 +9055,7 @@ typedef struct {
 	char *buffer_end;
 	size_t direct_write_size;
 	bool buffer_failed;
+	bool cork_writes;
 	ufbxwi_atomic_u32 fail_flag;
 
 	ufbxwi_write_chunk *current_chunk;
@@ -9252,6 +9253,8 @@ static void ufbxwi_write_queue_resolve_reloc(ufbxwi_write_queue *wq, uint32_t re
 
 static ufbxwi_noinline bool ufbxwi_write_queue_flush_chunks_imp(ufbxwi_write_queue *wq)
 {
+	if (wq->cork_writes) return true;
+
 	const size_t num_prev_chunks = wq->chunks_to_flush.count;
 	size_t num_new_chunks = 0;
 
@@ -9546,7 +9549,7 @@ static ufbxwi_noinline bool ufbxwi_queue_write_slow(ufbxwi_write_queue *wq, cons
 {
 	if (ufbxwi_write_queue_check_fail(wq)) return false;
 
-	if (length >= wq->direct_write_size && wq->current_chunk->has_file_offset) {
+	if (length >= wq->direct_write_size && wq->current_chunk->has_file_offset && !wq->cork_writes) {
 		// If we are doing a large write and know where we are writing, just write it directly to the file.
 		ufbxwi_check(ufbxwi_write_queue_flush(wq, 0), false);
 
@@ -10617,7 +10620,7 @@ static bool ufbxwi_deflate_buffer(ufbxwi_save_thread_context *tc, ufbxwi_write_c
 	}
 
 	if (tc->deflate.end_fn) {
-		tc->deflate.end_fn(&tc->deflate.user);
+		tc->deflate.end_fn(tc->deflate.user);
 	}
 
 	if (total_written > UINT32_MAX) {
@@ -12231,11 +12234,57 @@ static bool ufbxwi_open_file_write(ufbxw_write_stream *stream, const char *path,
 		return false;
 	}
 
+	stream->begin_fn = NULL;
 	stream->write_fn = ufbxwi_stdio_write;
 	stream->close_fn = ufbxwi_stdio_close;
 	stream->user = f;
 
 	return true;
+}
+
+// -- Memory IO
+
+typedef struct {
+	ufbxw_write_buffer buffer;
+	ufbxw_result_alloc_cb alloc_cb;
+} ufbxwi_memory_buffer;
+
+static bool ufbxwi_memory_buffer_begin(void *user, uint64_t required_size)
+{
+	ufbxwi_memory_buffer *buf = (ufbxwi_memory_buffer*)user;
+
+	ufbxwi_check(required_size <= SIZE_MAX, false);
+	size_t size = (size_t)required_size;
+
+	void *data;
+	if (buf->alloc_cb.fn) {
+		data = buf->alloc_cb.fn(buf->alloc_cb.user, size);
+	} else {
+		data = ufbxw_malloc(size);
+	}
+	ufbxwi_check(data, false);
+
+	buf->buffer.data = data;
+	buf->buffer.size = size;
+	return true;
+}
+
+static bool ufbxwi_memory_buffer_write(void *user, uint64_t offset, const void *data, size_t size)
+{
+	ufbxwi_memory_buffer *buf = (ufbxwi_memory_buffer*)user;
+
+	ufbxw_assert(offset <= buf->buffer.size);
+	ufbxw_assert((buf->buffer.size - (size_t)offset) >= size);
+	memcpy((char*)buf->buffer.data + (size_t)offset, data, size);
+	return true;
+}
+
+static void ufbxwi_setup_memory_stream(ufbxw_write_stream *stream, ufbxwi_memory_buffer *buf)
+{
+	stream->begin_fn = ufbxwi_memory_buffer_begin;
+	stream->write_fn = ufbxwi_memory_buffer_write;
+	stream->close_fn = NULL;
+	stream->user = buf;
 }
 
 // -- Save root
@@ -12378,10 +12427,54 @@ static void ufbxwi_save_imp(ufbxwi_save_context *sc, ufbxw_write_stream *stream,
 	// needs to be returned on the main thread.
 	sc->write_queue.buffer_pool = &sc->buffers;
 
+	// Block writes if we are buffering them, otherwise begin the output stream
+	if (sc->opts.buffer_writes) {
+		sc->write_queue.cork_writes = true;
+	} else if (sc->write_queue.stream.begin_fn) {
+		if (!sc->write_queue.stream.begin_fn(sc->write_queue.stream.user, 0)) {
+			ufbxwi_fail(&sc->error, UFBXW_ERROR_STREAM_BEGIN, "failed to begin output stream");
+			return;
+		}
+	}
+
 	ufbxwi_save_init(sc);
 	ufbxwi_save_root(sc);
 
-	ufbxwi_write_queue_finish(&sc->write_queue);
+	// If we are buffering writes, unblock them and potentially begin the stream with the known size
+	if (sc->opts.buffer_writes) {
+
+		// Finish the write queue before we allocate the buffer in case we fail
+		ufbxwi_check(ufbxwi_write_queue_finish(&sc->write_queue));
+
+		// Make sure we have no other errors either
+		ufbxwi_check(!ufbxwi_is_fatal(&sc->error));
+		ufbxwi_check(!ufbxwi_is_fatal(&sc->thread_error));
+
+		if (sc->write_queue.stream.begin_fn) {
+			const uint32_t offset_in_chunk = (uint32_t)(sc->write_queue.buffer_pos - sc->write_queue.buffer_begin);
+			const uint64_t file_offset = sc->write_queue.chunk_layout_file_offset + offset_in_chunk;
+
+			// Manually check the file size limit before we allocate the buffer
+			if (file_offset > sc->write_queue.file_size_limit) {
+				ufbxwi_failf(&sc->error, UFBXW_ERROR_FILE_SIZE_LIMIT, "file size limit exceeded (%llu)", (unsigned long long)sc->write_queue.file_size_limit);
+				return;
+			}
+
+			if (!sc->write_queue.stream.begin_fn(sc->write_queue.stream.user, file_offset)) {
+				ufbxwi_fail(&sc->error, UFBXW_ERROR_STREAM_BEGIN, "failed to begin output stream");
+				return;
+			}
+		}
+
+		// Past this point we are not allowed to fail in any way, unless the stream writing fails
+		sc->write_queue.cork_writes = false;
+
+		// Directly flush the chunks to memory
+		ufbxwi_check(ufbxwi_write_queue_flush_chunks_imp(&sc->write_queue));
+
+	} else {
+		ufbxwi_write_queue_finish(&sc->write_queue);
+	}
 
 	if (stats) {
 		const uint32_t offset_in_chunk = (uint32_t)(sc->write_queue.buffer_pos - sc->write_queue.buffer_begin);
@@ -15017,6 +15110,11 @@ ufbxw_abi bool ufbxw_open_file_write(ufbxw_write_stream *stream, const char *pat
 	return true;
 }
 
+ufbxw_abi void ufbxw_free_write_buffer(ufbxw_write_buffer buffer)
+{
+	ufbxw_free(buffer.data, buffer.size);
+}
+
 // -- IO
 
 ufbxw_abi bool ufbxw_save_file(ufbxw_scene *scene, const char *path, const ufbxw_save_opts *opts, ufbxw_error *error)
@@ -15027,6 +15125,11 @@ ufbxw_abi bool ufbxw_save_file(ufbxw_scene *scene, const char *path, const ufbxw
 ufbxw_abi bool ufbxw_save_file_len(ufbxw_scene *scene, const char *path, size_t path_len, const ufbxw_save_opts *opts, ufbxw_error *error)
 {
 	return ufbxw_save_file_ex_len(scene, path, path_len, opts, error, NULL);
+}
+
+ufbxw_abi bool ufbxw_save_memory(ufbxw_scene *scene, ufbxw_write_buffer *buffer, const ufbxw_save_opts *opts, ufbxw_error *error)
+{
+	return ufbxw_save_memory_ex(scene, buffer, opts, error, NULL);
 }
 
 ufbxw_abi bool ufbxw_save_stream(ufbxw_scene *scene, ufbxw_write_stream *stream, const ufbxw_save_opts *opts, ufbxw_error *error)
@@ -15041,12 +15144,39 @@ ufbxw_abi bool ufbxw_save_file_ex(ufbxw_scene *scene, const char *path, const uf
 
 ufbxw_abi bool ufbxw_save_file_ex_len(ufbxw_scene *scene, const char *path, size_t path_len, const ufbxw_save_opts *opts, ufbxw_error *error, ufbxw_save_stats *stats)
 {
-	ufbxw_write_stream stream;
+	ufbxw_write_stream stream = { 0 };
 	if (!ufbxw_open_file_write(&stream, path, path_len, error)) {
 		return false;
 	}
 
 	return ufbxw_save_stream_ex(scene, &stream, opts, error, stats);
+}
+
+ufbxw_abi bool ufbxw_save_memory_ex(ufbxw_scene *scene, ufbxw_write_buffer *buffer, const ufbxw_save_opts *opts, ufbxw_error *error, ufbxw_save_stats *stats)
+{
+	ufbxw_save_opts memory_opts;
+	if (opts) {
+		memory_opts = *opts;
+	} else {
+		memset(&memory_opts, 0, sizeof(memory_opts));
+	}
+	memory_opts.buffer_writes = true;
+
+	ufbxwi_memory_buffer buf = { 0 };
+	buf.alloc_cb = memory_opts.result_alloc_cb;
+
+	ufbxw_write_stream stream = { 0 };
+	ufbxwi_setup_memory_stream(&stream, &buf);
+
+	bool ok = ufbxw_save_stream_ex(scene, &stream, &memory_opts, error, stats);
+
+	// We should never fail after allocating the result buffer
+	if (!ok) {
+		ufbxw_assert(buf.buffer.data == NULL && buf.buffer.size == 0);
+	}
+	*buffer = buf.buffer;
+
+	return ok;
 }
 
 ufbxw_abi bool ufbxw_save_stream_ex(ufbxw_scene *scene, ufbxw_write_stream *stream, const ufbxw_save_opts *opts, ufbxw_error *error, ufbxw_save_stats *stats)

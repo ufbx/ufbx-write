@@ -82,3 +82,133 @@ UFBXWT_TEST(set_connection_replace_null)
 	ufbxw_free_scene(scene);
 }
 #endif
+
+#if UFBXWT_IMPL
+typedef struct {
+	size_t num_calls;
+	size_t size;
+	bool fail;
+} ufbxwt_result_alloc_state;
+
+static void *ufbxwt_result_alloc(void *user, size_t size)
+{
+	ufbxwt_result_alloc_state *state = (ufbxwt_result_alloc_state*)user;
+	state->num_calls++;
+	state->size = size;
+	if (state->fail) {
+		return NULL;
+	}
+	return malloc(size);
+}
+#endif
+
+UFBXWT_TEST(write_to_memory)
+#if UFBXWT_IMPL
+{
+	ufbxw_write_buffer buffer;
+
+	{
+		ufbxw_scene *scene = ufbxw_create_scene(NULL);
+		ufbxwt_assert(scene);
+
+		ufbxwt_create_node(scene, "Test");
+		ufbxwt_check_error(scene);
+
+		ufbxw_error error;
+		bool ok = ufbxw_save_memory(scene, &buffer, NULL, &error);
+		if (!ok) {
+			ufbxwt_log_error(&error);
+		}
+		ufbxwt_assert(ok);
+
+		ufbxw_free_scene(scene);
+	}
+
+	{
+		ufbx_scene *scene = ufbx_load_memory(buffer.data, buffer.size, NULL, NULL);
+		ufbxwt_assert(scene);
+
+		ufbx_node *node = ufbx_find_node(scene, "Test");
+		ufbxwt_assert(node);
+
+		ufbx_free_scene(scene);
+	}
+
+	ufbxw_free_write_buffer(buffer);
+}
+#endif
+
+UFBXWT_TEST(write_to_memory_allocator)
+#if UFBXWT_IMPL
+{
+	ufbxw_write_buffer buffer;
+	ufbxwt_result_alloc_state state = { 0 };
+	ufbxw_save_opts opts = { 0 };
+	opts.result_alloc_cb.fn = &ufbxwt_result_alloc;
+	opts.result_alloc_cb.user = &state;
+
+	{
+		ufbxw_scene *scene = ufbxw_create_scene(NULL);
+		ufbxwt_assert(scene);
+
+		ufbxwt_create_node(scene, "Test");
+		ufbxwt_check_error(scene);
+
+		ufbxw_error error;
+		bool ok = ufbxw_save_memory(scene, &buffer, &opts, &error);
+		if (!ok) {
+			ufbxwt_log_error(&error);
+		}
+		ufbxwt_assert(ok);
+		ufbxwt_assert(state.num_calls == 1);
+		ufbxwt_assert(state.size == buffer.size);
+
+		ufbxw_free_scene(scene);
+	}
+
+	{
+		ufbx_scene *scene = ufbx_load_memory(buffer.data, buffer.size, NULL, NULL);
+		ufbxwt_assert(scene);
+
+		ufbx_node *node = ufbx_find_node(scene, "Test");
+		ufbxwt_assert(node);
+
+		ufbx_free_scene(scene);
+	}
+
+	free(buffer.data);
+}
+#endif
+
+UFBXWT_TEST(write_to_memory_allocator_fail)
+#if UFBXWT_IMPL
+{
+	ufbxw_write_buffer buffer = { 0 };
+
+	ufbxwt_result_alloc_state state = { 0 };
+	state.fail = true;
+
+	ufbxw_save_opts opts = { 0 };
+	opts.result_alloc_cb.fn = &ufbxwt_result_alloc;
+	opts.result_alloc_cb.user = &state;
+
+	{
+		ufbxw_scene *scene = ufbxw_create_scene(NULL);
+		ufbxwt_assert(scene);
+
+		ufbxwt_create_node(scene, "Test");
+		ufbxwt_check_error(scene);
+
+		ufbxw_error error;
+		bool ok = ufbxw_save_memory(scene, &buffer, &opts, &error);
+		ufbxwt_assert(!ok);
+		ufbxwt_assert_error(&error, UFBXW_ERROR_STREAM_BEGIN, "ufbxwi_save_imp", "failed to begin output stream");
+		ufbxwt_assert(state.num_calls == 1);
+		ufbxwt_assert(state.size > 0);
+		ufbxwt_assert(buffer.data == NULL);
+		ufbxwt_assert(buffer.size == 0);
+
+		ufbxw_free_scene(scene);
+	}
+}
+#endif
