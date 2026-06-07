@@ -7504,7 +7504,7 @@ static ufbxwi_noinline bool ufbxwi_cast_value(void *dst, const void *src, ufbxw_
 		ufbxw_user_real *d = (ufbxw_user_real*)dst;
 		switch (src_type) {
 		case UFBXW_PROP_DATA_REAL:
-			d->value = *(const int32_t*)src;
+			d->value = *(const ufbxw_real*)src;
 			return true;
 		default:
 			break;
