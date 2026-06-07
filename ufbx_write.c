@@ -8271,7 +8271,7 @@ static bool ufbxwi_is_valid_date(const ufbxw_datetime *dt)
 	if (dt->hour < 0 || dt->hour > 23) return false;
 	if (dt->minute < 0 || dt->minute > 59) return false;
 	if (dt->second < 0 || dt->second > 60) return false;
-	if (dt->millisecond < 0 || dt->millisecond > 1000) return false;
+	if (dt->millisecond < 0 || dt->millisecond > 999) return false;
 	return true;
 }
 
