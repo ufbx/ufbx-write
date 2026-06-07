@@ -145,6 +145,9 @@ def gather_dataset_tasks(root_dir, heavy, allow_unknown, last_supported_time):
         for filename in files:
             if not filename.endswith(".json"):
                 continue
+            if filename.endswith(".list.json"):
+                continue
+
             yield from create_dataset_task(root_dir, root, filename, heavy, allow_unknown, last_supported_time)
 
 if __name__ == "__main__":
@@ -161,6 +164,7 @@ if __name__ == "__main__":
     parser.add_argument("--include-recent", action="store_true", help="Run tests that are too recent")
     parser.add_argument("--threads", type=int, default=1, help="Number of threads to use for running")
     parser.add_argument("--quiet", action="store_true", help="Do not print successful test information")
+    parser.add_argument("--list", help="Specify a list of files in a .json format")
     argv = parser.parse_args()
 
     host_url = argv.host_url if argv.host_url else argv.root
@@ -169,6 +173,12 @@ if __name__ == "__main__":
     latest_supported_time = datetime.datetime.strptime(LATEST_SUPPORTED_DATE, "%Y-%m-%d")
     if argv.include_recent:
         latest_supported_time = None
+
+    case_set = None
+    if argv.list:
+        with open(argv.list, "rt", encoding="utf-8") as f:
+            case_list = json.load(f)
+        case_set = set(case_list["cases"])
 
     cases = list(gather_dataset_tasks(root_dir=argv.root, heavy=argv.heavy, allow_unknown=argv.allow_unknown, last_supported_time=latest_supported_time))
 
@@ -184,6 +194,14 @@ if __name__ == "__main__":
             path = os.path.relpath(path, root)
         path = path.replace("\\", "/")
         return f"{path}"
+
+    def case_filter(case):
+        rel_path = fmt_rel(case.json_path, argv.root)
+        print(rel_path)
+        if case_set is not None:
+            return rel_path in case_set
+
+    cases = [c for c in cases if case_filter(c)]
 
     ok_count = 0
     test_count = 0

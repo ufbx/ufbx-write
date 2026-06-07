@@ -92,12 +92,7 @@ jobs:
       - name: Generate coverage
         env:
           LLVM_COV: llvm-cov
-        run: |
-          LLVM_GCOV=$(realpath misc/llvm_gcov.sh)
-          chmod +x misc/llvm_gcov.sh
-          UFBX_WRITE_GCDA=$(find build-test/CMakeFiles/ufbx_write.dir -name 'ufbx_write.c.gcda' -print -quit)
-          $LLVM_COV gcov "$UFBX_WRITE_GCDA" -b
-          lcov --directory build-test --base-directory . --gcov-tool $LLVM_GCOV --config-file misc/lcovrc --capture -o coverage.lcov
+        run: bash misc/generate_lcov.sh
       - name: Upload coverage
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -126,12 +121,7 @@ jobs:
       - name: Generate coverage
         env:
           LLVM_COV: llvm-cov
-        run: |
-          LLVM_GCOV=$(realpath misc/llvm_gcov.sh)
-          chmod +x misc/llvm_gcov.sh
-          UFBX_WRITE_GCDA=$(find build-test/CMakeFiles/ufbx_write.dir -name 'ufbx_write.c.gcda' -print -quit)
-          $LLVM_COV gcov "$UFBX_WRITE_GCDA" -b
-          lcov --directory build-test --base-directory . --gcov-tool $LLVM_GCOV --config-file misc/lcovrc --capture -o coverage.lcov
+        run: bash misc/generate_lcov.sh
       - name: Upload coverage
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -140,6 +130,30 @@ jobs:
           curl -Os https://cli.codecov.io/latest/linux/codecov
           sudo chmod +x codecov
           ./codecov --verbose upload-process --disable-search --fail-on-error --plugin noop -t ${{ secrets.CODECOV_TOKEN }} -n ci_coverage_unit-${{ github.run_id }} -F unit -f coverage.lcov
+
+  ci_dataset:
+    runs-on: [self-hosted, dataset]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Configure test CMake
+        run: cmake -S test -B build-test -D USE_COVERAGE=ON -D CMAKE_BUILD_TYPE=Debug -D CMAKE_C_COMPILER=clang -D CMAKE_CXX_COMPILER=clang++
+      - name: Compile roundtrip
+        run: cmake --build build-test --target roundtrip -j 4
+      - name: Run dataset tests
+        run: python3 misc/check_dataset.py --exe build-test/roundtrip/roundtrip --root /mnt/fbx-files --host-url https://ufbx-dataset.b-cdn.net --result build/dataset --threads 4 --allow-unknown --list /mnt/roundtrip_list.json
+      - name: Generate coverage
+        run: LLVM_COV=llvm-cov bash misc/generate_lcov.sh
+      - name: Upload coverage
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          set -x
+          curl -Os https://cli.codecov.io/latest/linux-arm64/codecov
+          chmod +x codecov
+          ./codecov --verbose upload-process --disable-search --fail-on-error --plugin noop -t ${{ secrets.CODECOV_TOKEN }} -n ci_dataset-${{ github.run_id }} -F dataset -f coverage.lcov
 
   ci_fuzz:
     runs-on: ubuntu-latest
