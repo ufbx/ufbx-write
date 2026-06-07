@@ -1126,7 +1126,7 @@ static ufbxwi_noinline ufbxwi_alloc *ufbxwi_alloc_block(ufbxwi_allocator *ator, 
 
 	ufbxwi_alloc *block = NULL;
 	if (ator->ator.alloc_fn) {
-		block = (ufbxwi_alloc*)ator->ator.alloc_fn(ator->ator.user, size);
+		block = (ufbxwi_alloc*)ator->ator.alloc_fn(ator->ator.user, alloc_size);
 	} else {
 		block = (ufbxwi_alloc*)ufbxw_malloc(alloc_size);
 	}
