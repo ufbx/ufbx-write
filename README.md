@@ -62,5 +62,12 @@ ufbxw_free_scene(scene);
 
 Copy `ufbx_write.h` and `ufbx_write.c` to your project, `ufbx_write.c` needs to be compiled as C99/C++11 or more recent.
 
-There are some features that are missing from ufbx_write, that are currently patched via dependencies.
-You can find adapters under `extra/` for threading and faster ASCII formatting.
+### ASCII formatting
+
+The internal ASCII formatting uses `snprintf()` and is very slow compared to the state-of-the-art.
+Under `extra/`, you can find options for faster alternatives for C++17 `std::to_chars()`, [fmtlib](https://github.com/fmtlib/fmt) and [Żmij](https://github.com/vitaut/zmij).
+
+### Threading
+
+ufbx_write does not have any OS-specific code, and by default does not use multiple threads.
+`extra/ufbxw_cpp_threads.h` has a C++11-based threading implementation you can plug into ufbx_write.
