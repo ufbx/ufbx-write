@@ -5677,7 +5677,7 @@ static const ufbxwi_prop_type_desc ufbxwi_prop_types[] = {
 	{ "Roll", "", UFBXW_PROP_DATA_REAL },
 	{ "OpticalCenterX", "", UFBXW_PROP_DATA_REAL },
 	{ "OpticalCenterY", "", UFBXW_PROP_DATA_REAL },
-	{ "FieldOfViewX", "", UFBXW_PROP_DATA_REAL },
+	{ "FieldOfView", "", UFBXW_PROP_DATA_REAL },
 	{ "FieldOfViewX", "", UFBXW_PROP_DATA_REAL },
 	{ "FieldOfViewY", "", UFBXW_PROP_DATA_REAL },
 	{ "Lcl Translation", "", UFBXW_PROP_DATA_VEC3 },
