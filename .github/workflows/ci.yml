@@ -73,6 +73,41 @@ jobs:
       - name: Run unit tests
         run: build-test/unit/ufbxw_unit --verbose
 
+  ci_coverage:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Update apt
+        run: sudo apt-get update
+      - name: Install apt dependencies
+        run: sudo apt-get install -y lcov llvm clang
+      - name: Configure test CMake
+        run: cmake -S test -B build-test -D USE_COVERAGE=ON -D CMAKE_BUILD_TYPE=Debug -D CMAKE_C_COMPILER=clang -D CMAKE_CXX_COMPILER=clang++
+      - name: Compile tests
+        run: cmake --build build-test -j 4
+      - name: Run tests
+        run: build-test/test/ufbxw_test --verbose
+      - name: Run unit tests
+        run: build-test/unit/ufbxw_unit --verbose
+      - name: Generate coverage
+        env:
+          LLVM_COV: llvm-cov
+        run: |
+          LLVM_GCOV=$(realpath misc/llvm_gcov.sh)
+          chmod +x misc/llvm_gcov.sh
+          lcov --directory build-test --base-directory . --gcov-tool $LLVM_GCOV --capture -o coverage.raw.lcov
+          lcov --extract coverage.raw.lcov "$(pwd)/ufbx_write.c" "$(pwd)/ufbx_write.h" -o coverage.lcov
+      - name: Upload coverage
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          curl -Os https://cli.codecov.io/latest/linux/codecov
+          sudo chmod +x codecov
+          ./codecov --verbose upload-process --disable-search --fail-on-error --plugin noop -t ${{ secrets.CODECOV_TOKEN }} -n ci_coverage-${{ github.run_id }} -F tests -f coverage.lcov
+
   ci_fuzz:
     runs-on: ubuntu-latest
     steps:
