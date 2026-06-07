@@ -14158,7 +14158,7 @@ ufbxw_abi void ufbxw_blend_channel_add_shape(ufbxw_scene *scene, ufbxw_blend_cha
 		pos++;
 	}
 
-	memmove(shapes + pos, shapes + pos + 1, (prev_count - pos) * sizeof(ufbxwi_blend_shape_conn));
+	memmove(shapes + pos + 1, shapes + pos, (prev_count - pos) * sizeof(ufbxwi_blend_shape_conn));
 	shapes[pos].shape = shape;
 	shapes[pos].target_weight = target_weight;
 }
