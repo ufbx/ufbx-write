@@ -12331,6 +12331,7 @@ static void ufbxwi_save_imp(ufbxwi_save_context *sc, ufbxw_write_stream *stream,
 
 	sc->error.fatal_fn = &ufbxwi_save_fatal;
 	sc->error.fatal_user = sc;
+	sc->ator.ator = sc->opts.allocator;
 	sc->ator.error = &sc->error;
 
 	// TODO: Options for these
@@ -12395,6 +12396,7 @@ static void ufbxwi_save_imp(ufbxwi_save_context *sc, ufbxw_write_stream *stream,
 		sc->error.serial_counter = &sc->thread_error_serial;
 		sc->thread_error.serial_counter = &sc->thread_error_serial;
 
+		sc->thread_ator.ator = sc->opts.allocator;
 		sc->thread_ator.error = &sc->thread_error;
 		sc->thread_ator.thread_pool = &sc->thread_pool;
 
