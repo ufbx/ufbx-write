@@ -155,7 +155,7 @@ if __name__ == "__main__":
 
     parser = ArgumentParser("check_dataset.py --root <root>")
     parser.add_argument("--root", required=True, help="Root directory to search for .json files")
-    parser.add_argument("--result", required=True, help="Result directory to store resulting files")
+    parser.add_argument("--result", help="Result directory to store resulting files")
     parser.add_argument("--host-url", default="", help="URL where the files are hosted")
     parser.add_argument("--exe", help="roundtrip.c executable")
     parser.add_argument("--verbose", action="store_true", help="Print verbose information")
@@ -197,7 +197,6 @@ if __name__ == "__main__":
 
     def case_filter(case):
         rel_path = fmt_rel(case.json_path, argv.root)
-        print(rel_path)
         if case_set is not None:
             return rel_path in case_set
 
@@ -254,12 +253,12 @@ if __name__ == "__main__":
 
         case_run_count += 1
 
-        for extra in case.extra_files:
-            rel_extra = fmt_rel(extra, argv.root)
-            result_extra = os.path.join(argv.result, rel_extra)
-
-            os.makedirs(os.path.dirname(result_extra), exist_ok=True)
-            shutil.copyfile(extra, result_extra)
+        if argv.result:
+            for extra in case.extra_files:
+                rel_extra = fmt_rel(extra, argv.root)
+                result_extra = os.path.join(argv.result, rel_extra)
+                os.makedirs(os.path.dirname(result_extra), exist_ok=True)
+                shutil.copyfile(extra, result_extra)
 
         for model in case.models:
 
@@ -285,15 +284,18 @@ if __name__ == "__main__":
                 opts_dict = { k: v for k,v in opts }
                 format = opts_dict["format"]
 
-                result_path = os.path.join(argv.result, rel_path)
-                result_path = os.path.splitext(result_path)[0]
-                result_path = f"{result_path}_7500_{format}.fbx"
-                os.makedirs(os.path.dirname(result_path), exist_ok=True)
+                result_args = []
+                if argv.result:
+                    result_path = os.path.join(argv.result, rel_path)
+                    result_path = os.path.splitext(result_path)[0]
+                    result_path = f"{result_path}_7500_{format}.fbx"
+                    os.makedirs(os.path.dirname(result_path), exist_ok=True)
+                    result_args = ["-o", result_path]
 
                 roundtrip_args = [
                     argv.exe,
                     model.fbx_path,
-                    "-o", result_path,
+                    *result_args,
                     "-f", format,
                     "--ascii", "fmtlib",
                     "--advanced-transform",

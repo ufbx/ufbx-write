@@ -670,7 +670,7 @@ static void compare_anim(ufbx_scene *src_scene, ufbx_anim *src_anim, ufbx_scene 
 	}
 }
 
-extern "C" bool compare_fbx(const char *src_path, const char *ref_path, const compare_fbx_opts *opts)
+extern "C" bool compare_fbx(compare_fbx_input input, const char *ref_path, const compare_fbx_opts *opts)
 {
 	g_opts = *opts;
 
@@ -679,7 +679,13 @@ extern "C" bool compare_fbx(const char *src_path, const char *ref_path, const co
 
 	ufbx_error load_error;
 
-	ufbx_scene *src_scene = ufbx_load_file(src_path, &load_opts, &load_error);
+	ufbx_scene *src_scene;
+	if (input.file_path) {
+		src_scene = ufbx_load_file(input.file_path, &load_opts, &load_error);
+	} else {
+		src_scene = ufbx_load_memory(input.memory_data, input.memory_size, &load_opts, &load_error);
+	}
+
 	if (!src_scene) {
 		char err_buf[512];
 		ufbx_format_error(err_buf, sizeof(err_buf), &load_error);

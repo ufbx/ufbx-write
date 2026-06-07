@@ -371,7 +371,6 @@ int main(int argc, char **argv)
 	}
 
 	ufbxwt_assert(input_path != NULL);
-	ufbxwt_assert(output_path != NULL);
 
 	ufbx_load_opts load_opts = { 0 };
 
@@ -1015,9 +1014,18 @@ int main(int argc, char **argv)
 	ufbxwt_assert(ufbxwt_ascii_format_setup(&save_opts.ascii_formatter, ascii_impl));
 	ufbxwt_assert(ufbxwt_thread_setup(&save_opts.thread_sync, &save_opts.thread_pool, thread_impl));
 
+	ufbxw_write_buffer memory_buffer;
+	compare_fbx_input compare_input;
+
 	ufbxw_error save_error;
-	bool ok = ufbxw_save_file(out_scene, output_path, &save_opts, &save_error);
-	if (!ok) {
+	bool save_ok = false;
+	if (output_path) {
+		save_ok = ufbxw_save_file(out_scene, output_path, &save_opts, &save_error);
+	} else {
+		save_ok = ufbxw_save_memory(out_scene, &memory_buffer, &save_opts, &save_error);
+	}
+
+	if (!save_ok) {
 		fprintf(stderr, "failed to save: %s\n", save_error.description);
 		exit(3);
 	}
@@ -1031,10 +1039,20 @@ int main(int argc, char **argv)
 		compare_opts.approx_epsilon = 1e-3;
 		compare_opts.compare_anim = true;
 
-		if (!compare_fbx(output_path, input_path, &compare_opts)) {
+		compare_fbx_input input = { 0 };
+		if (output_path) {
+			input.file_path = output_path;
+		} else {
+			input.memory_data = memory_buffer.data;
+			input.memory_size = memory_buffer.size;
+		}
+
+		if (!compare_fbx(input, input_path, &compare_opts)) {
 			result = 1;
 		}
 	}
+
+	ufbxw_free_write_buffer(memory_buffer);
 
 	return result;
 }

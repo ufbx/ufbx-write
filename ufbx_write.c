@@ -15112,7 +15112,9 @@ ufbxw_abi bool ufbxw_open_file_write(ufbxw_write_stream *stream, const char *pat
 
 ufbxw_abi void ufbxw_free_write_buffer(ufbxw_write_buffer buffer)
 {
-	ufbxw_free(buffer.data, buffer.size);
+	if (buffer.data != NULL) {
+		ufbxw_free(buffer.data, buffer.size);
+	}
 }
 
 // -- IO
