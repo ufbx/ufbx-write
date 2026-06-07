@@ -138,7 +138,7 @@ jobs:
         with:
           fetch-depth: 2
       - name: Configure test CMake
-        run: cmake -S test -B build-test -D USE_COVERAGE=ON -D USE_TO_CHARS=OFF -D CMAKE_BUILD_TYPE=Debug -D CMAKE_C_COMPILER=clang -D CMAKE_CXX_COMPILER=clang++
+        run: cmake -S test -B build-test -D USE_COVERAGE=ON -D USE_TO_CHARS=OFF -D CMAKE_BUILD_TYPE=RelWithDebInfo -D CMAKE_C_COMPILER=clang -D CMAKE_CXX_COMPILER=clang++
       - name: Compile roundtrip
         run: cmake --build build-test --target roundtrip -j 4
       - name: Run dataset tests
