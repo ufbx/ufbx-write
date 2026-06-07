@@ -97,8 +97,9 @@ jobs:
         run: |
           LLVM_GCOV=$(realpath misc/llvm_gcov.sh)
           chmod +x misc/llvm_gcov.sh
-          lcov --directory build-test --base-directory . --gcov-tool $LLVM_GCOV --capture -o coverage.raw.lcov
-          lcov --extract coverage.raw.lcov "$(pwd)/ufbx_write.c" "$(pwd)/ufbx_write.h" -o coverage.lcov
+          UFBX_WRITE_GCDA=$(find build-test/CMakeFiles/ufbx_write.dir -name 'ufbx_write.c.gcda' -print -quit)
+          $LLVM_COV gcov "$UFBX_WRITE_GCDA" -b
+          lcov --directory build-test --base-directory . --gcov-tool $LLVM_GCOV --config-file misc/lcovrc --capture -o coverage.lcov
       - name: Upload coverage
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

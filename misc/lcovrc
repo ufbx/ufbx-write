@@ -1,0 +1,3 @@
+lcov_branch_coverage=1
+lcov_excl_br_line=ufbxw_assert|ufbxwi_dev_assert|ufbxwi_analysis_assert|ufbxwi_macro_stable_sort
+lcov_excl_line=LCOV_EXCL_LINE|ufbxwi_unreachable
