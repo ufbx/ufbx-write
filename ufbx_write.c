@@ -4577,10 +4577,10 @@ static ufbxwi_void_span ufbxwi_buffer_read(ufbxwi_buffer_pool *pool, ufbxw_buffe
 	ufbxwi_buffer *buffer = ufbxwi_get_buffer(pool, id);
 	size_t type_size = ufbxwi_buffer_type_infos[type].size;
 
-	ufbxw_assert(offset <= buffer->count);
-
 	ufbxwi_void_span result = { NULL, 0 };
 	if (!buffer) return result;
+
+	ufbxw_assert(offset <= buffer->count);
 
 	ufbxw_assert(temp_size >= type_size);
 	size_t temp_count = temp_size / type_size;
@@ -4761,6 +4761,7 @@ static void ufbxwi_set_buffer(ufbxwi_buffer_pool *pool, ufbxw_buffer_id *p_dst, 
 static bool ufbxwi_make_buffer_owned(ufbxwi_buffer_pool *pool, ufbxw_buffer_id id)
 {
 	ufbxwi_buffer *buffer = ufbxwi_get_buffer(pool, id);
+	if (!buffer) return false;
 	if (buffer->state == UFBXWI_BUFFER_STATE_OWNED) return true;
 
 	ufbxwi_buffer_type type = ufbxwi_buffer_id_type(id);
@@ -4828,7 +4829,10 @@ static void ufbxwi_set_buffer_from_user(ufbxwi_buffer_pool *pool, ufbxw_buffer_i
 
 	if (src) {
 		ufbxwi_buffer *buffer = ufbxwi_get_buffer(pool, src);
-		ufbxw_assert(buffer);
+		if (!buffer) {
+			ufbxwi_fail(pool->error, UFBXW_ERROR_BUFFER_NOT_FOUND, "buffer not found");
+			return;
+		}
 		ufbxw_assert(buffer->user_refcount > 0);
 		ufbxw_assert(buffer->refcount > 0);
 		buffer->user_refcount--;
@@ -8793,7 +8797,7 @@ static void ufbxwi_prepare_scene(ufbxw_scene *scene, const ufbxw_prepare_opts *o
 
 	if (opts->patch_original_up_axis) {
 		ufbxwi_global_settings *global_settings = ufbxwi_get_global_settings_by_id(scene, scene->global_settings_id);
-		if (global_settings->original_up_axis_sign == 0) {
+		if (global_settings && global_settings->original_up_axis_sign == 0) {
 			global_settings->original_up_axis = global_settings->up_axis;
 			global_settings->original_up_axis_sign = global_settings->up_axis_sign;
 		}
@@ -8801,7 +8805,7 @@ static void ufbxwi_prepare_scene(ufbxw_scene *scene, const ufbxw_prepare_opts *o
 
 	if (opts->patch_original_units) {
 		ufbxwi_global_settings *global_settings = ufbxwi_get_global_settings_by_id(scene, scene->global_settings_id);
-		if (global_settings->original_unit_scale_factor == 0.0f) {
+		if (global_settings && global_settings->original_unit_scale_factor == 0.0f) {
 			global_settings->original_unit_scale_factor = global_settings->unit_scale_factor;
 		}
 	}
@@ -11481,8 +11485,10 @@ static void ufbxwi_save_selection_node(ufbxwi_save_context *sc, ufbxwi_selection
 
 	{
 		ufbxwi_node *node = ufbxwi_get_node(sc->scene, selection->node);
-		ufbxw_string name = ufbxwi_format_element_type_and_name(sc, &node->element);
-		ufbxwi_dom_value(sc, "Node", "S", name);
+		if (node) {
+			ufbxw_string name = ufbxwi_format_element_type_and_name(sc, &node->element);
+			ufbxwi_dom_value(sc, "Node", "S", name);
+		}
 	}
 
 	ufbxwi_dom_value(sc, "IsTheNodeInSet", "I", selection->node_in_set ? 1 : 0);
@@ -14657,6 +14663,7 @@ ufbxw_abi ufbxw_anim_layer ufbxw_create_anim_layer(ufbxw_scene *scene, ufbxw_ani
 ufbxw_abi void ufbxw_anim_layer_set_weight(ufbxw_scene *scene, ufbxw_anim_layer layer, ufbxw_real weight)
 {
 	ufbxwi_anim_layer *l = ufbxwi_get_anim_layer(scene, layer);
+	ufbxwi_check_element(scene, layer.id, l);
 	l->weight = weight;
 }
 
@@ -14679,6 +14686,7 @@ ufbxw_abi ufbxw_anim_curve ufbxw_anim_get_curve(ufbxw_scene *scene, ufbxw_anim_p
 ufbxw_abi void ufbxw_anim_set_default_value(ufbxw_scene *scene, ufbxw_anim_prop anim, size_t index, ufbxw_real value)
 {
 	ufbxwi_anim_prop *p = ufbxwi_get_anim_prop(scene, anim);
+	ufbxwi_check_element(scene, anim.id, p);
 	if (index >= 4) {
 		ufbxwi_failf(&scene->error, UFBXW_ERROR_INDEX_OUT_OF_BOUNDS, "index (%zu) out of bounds (4)", index);
 		return;
