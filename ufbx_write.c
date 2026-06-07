@@ -8691,6 +8691,7 @@ ufbxw_abi void ufbxw_set_save_info(ufbxw_scene *scene, const ufbxw_save_info *in
 
 	ufbxw_id scene_info_id = ufbxw_get_scene_info_id(scene);
 	ufbxwi_scene_info *scene_info = (ufbxwi_scene_info*)ufbxwi_get_element(scene, scene_info_id);
+	if (!scene_info) return;
 
 	ufbxwi_intern_string_str(&scene->string_pool, &scene_info->document_url, info->document_url);
 
