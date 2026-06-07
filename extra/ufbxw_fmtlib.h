@@ -1,6 +1,17 @@
 #ifndef UFBXW_FMTLIB_H_INCLUDED
 #define UFBXW_FMTLIB_H_INCLUDED
 
+// Adapter for fmtlib for ASCII formatter implementation.
+//
+// https://github.com/fmtlib/fmt
+//
+// In one C++ translation unit, do the following:
+//
+//     #include "path/to/ufbx_write.h"
+//     #include "path/to/fmt/format.h"
+//
+// You can still use `ufbxw_fmtlib_setup()` from C.
+
 #include <stddef.h>
 
 #if !defined(ufbxw_fmtlib_abi)

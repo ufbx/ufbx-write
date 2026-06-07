@@ -1,6 +1,13 @@
 #ifndef UFBXW_LIBDEFLATE_H_INCLUDED
 #define UFBXW_LIBDEFLATE_H_INCLUDED
 
+// Adapter for libdeflate DEFLATE implementation.
+//
+// https://github.com/ebiggers/libdeflate
+//
+// NOTE: FBX files saved using libdeflate are not openable with older ufbx versions.
+// For maximum compatibility, prefer using the internal DEFLATE implementation.
+
 #include <stddef.h>
 
 #if !defined(ufbxw_libdeflate_abi)

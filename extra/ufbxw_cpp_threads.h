@@ -1,6 +1,17 @@
 #ifndef UFBXW_CPP_THREADS_H_INCLUDED
 #define UFBXW_CPP_THREADS_H_INCLUDED
 
+// Adapter for standard C++11 threads for threading.
+//
+// In one C++ translation unit, do the following:
+//
+//     #include "path/to/ufbx_write.h"
+//
+//     #define UFBXW_CPP_THREADS_IMPLEMENTATION
+//     #include "path/to/ufbxw_cpp_threads.h"
+//
+// You can still use `ufbxw_cpp_threads_setup_sync/pool()` from C.
+
 #include <stddef.h>
 
 #if !defined(ufbxw_cpp_threads_abi)

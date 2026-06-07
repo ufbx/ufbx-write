@@ -1,6 +1,17 @@
 #ifndef UFBXW_TO_CHARS_H_INCLUDED
 #define UFBXW_TO_CHARS_H_INCLUDED
 
+// Adapter for standard C++17 `std::to_chars()` for ASCII formatting.
+//
+// In one C++ translation unit, do the following:
+//
+//     #include "path/to/ufbx_write.h"
+//
+//     #define UFBXW_TO_CHARS_IMPLEMENTATION
+//     #include "path/to/ufbxw_to_chars.h"
+//
+// You can still use `ufbxw_to_chars_setup()` from C.
+
 #include <stddef.h>
 
 #if !defined(ufbxw_to_chars_abi)
