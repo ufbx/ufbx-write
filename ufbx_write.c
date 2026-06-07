@@ -11894,15 +11894,15 @@ static void ufbxwi_save_definitions(ufbxwi_save_context *sc)
 {
 	ufbxw_scene *scene = sc->scene;
 
-	size_t object_type_count = 0;
+	size_t object_count = 0;
 	ufbxwi_for_list(ufbxwi_save_object_type, obj_type, sc->object_types) {
 		if (obj_type->reference_count == 0) continue;
-		object_type_count++;
+		object_count += obj_type->reference_count;
 	}
 
 	ufbxwi_dom_open(sc, "Definitions", "");
 	ufbxwi_dom_value(sc, "Version", "I", 100);
-	ufbxwi_dom_value(sc, "Count", "I", (int32_t)object_type_count);
+	ufbxwi_dom_value(sc, "Count", "I", (int32_t)object_count);
 
 	for (size_t i = 0; i < sc->object_types.count; i++) {
 		const ufbxwi_object_type *scene_obj_type = &scene->object_types.data[i];
