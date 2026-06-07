@@ -14915,7 +14915,7 @@ ufbxw_abi void ufbxw_anim_curve_set_data(ufbxw_scene *scene, ufbxw_anim_curve cu
 	c->data_in_buffers = true;
 
 	size_t num_times = ufbxwi_get_buffer_size(&scene->buffers, data->key_times.id);
-	size_t num_values = ufbxwi_get_buffer_size(&scene->buffers, data->key_times.id);
+	size_t num_values = ufbxwi_get_buffer_size(&scene->buffers, data->key_values.id);
 
 	if (data->key_times.id && data->key_values.id) {
 		ufbxw_assert(num_times == num_values);
