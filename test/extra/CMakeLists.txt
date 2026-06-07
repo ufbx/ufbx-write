@@ -118,6 +118,10 @@ if(USE_CPP_THREADS)
     target_compile_definitions(ufbxw_extra PUBLIC UFBXWT_HAS_CPP_THREADS=1)
 
     list(APPEND SRC_EXTRA "../../extra/ufbxw_cpp_threads.h" "ufbxw_cpp_threads.cpp")
+
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+    find_package(Threads REQUIRED)
+    target_link_libraries(ufbxw_extra PUBLIC Threads::Threads)
 endif()
 
 target_sources(ufbxw_extra PRIVATE ${SRC_EXTRA})
