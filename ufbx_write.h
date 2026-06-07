@@ -1446,7 +1446,10 @@ typedef struct ufbxw_write_stream {
 
 ufbxw_abi bool ufbxw_open_file_write(ufbxw_write_stream *stream, const char *path, size_t path_len, ufbxw_error *error);
 
+// TODO: Formatter issue on function typedefs
+// ufbxwi_disable_format
 typedef void *ufbxw_result_alloc_fn(void *user, size_t size);
+// ufbxwi_enable_format
 
 // Callback for allocating a result `ufbx_write_buffer`
 typedef struct ufbxw_result_alloc_cb {
