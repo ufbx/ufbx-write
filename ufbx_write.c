@@ -14946,7 +14946,7 @@ ufbxw_abi void ufbxw_anim_curve_set_data(ufbxw_scene *scene, ufbxw_anim_curve cu
 
 	if (data->fbx_attr_refcounts.id && data->fbx_attr_flags.id && data->fbx_attr_data.id) {
 		ufbxwi_set_buffer_from_user(&scene->buffers, &c->buffer_attr_refcounts.id, data->fbx_attr_refcounts.id);
-		ufbxwi_set_buffer_from_user(&scene->buffers, &c->buffer_attr_flags.id, data->fbx_attr_data.id);
+		ufbxwi_set_buffer_from_user(&scene->buffers, &c->buffer_attr_flags.id, data->fbx_attr_flags.id);
 		ufbxwi_set_buffer_from_user(&scene->buffers, &c->buffer_attr_data.id, data->fbx_attr_data.id);
 	} else {
 		int32_t refcount = (int32_t)num_times;
