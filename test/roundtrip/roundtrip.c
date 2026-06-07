@@ -942,7 +942,7 @@ int main(int argc, char **argv)
 							if (next_key) {
 								out_key.slope_right = in_key.right.dy / in_key.right.dx;
 								out_key.weight_right = in_key.right.dx / (next_key->time - in_key.time);
-								if (fabsf(out_key.weight_right - 0.333333f) > 1e-6f) {
+								if (fabs(out_key.weight_right - 0.333333) > 1e-6) {
 									out_key.flags |= UFBXW_KEYFRAME_WEIGHTED_RIGHT;
 								}
 							}
@@ -953,7 +953,7 @@ int main(int argc, char **argv)
 							out_key.flags |= UFBXW_KEYFRAME_TANGENT_USER | UFBXW_KEYFRAME_TANGENT_BROKEN;
 							out_key.slope_left = in_key.left.dy / in_key.left.dx;
 							out_key.weight_left = in_key.left.dx / (in_key.time - prev_key->time);
-							if (fabsf(out_key.weight_left - 0.333333f) > 1e-6f) {
+							if (fabs(out_key.weight_left - 0.333333) > 1e-6) {
 								out_key.flags |= UFBXW_KEYFRAME_WEIGHTED_LEFT;
 							}
 						}
