@@ -8855,8 +8855,12 @@ static void ufbxwi_prepare_scene(ufbxw_scene *scene, const ufbxw_prepare_opts *o
 			ufbxwi_video *vd = ufbxwi_get_video(scene, td->video);
 			if (!vd) continue;
 
-			vd->filename = td->filename;
-			vd->relative_filename = td->relative_filename;
+			if (vd->filename.length == 0) {
+				vd->filename = td->filename;
+			}
+			if (vd->relative_filename.length == 0) {
+				vd->relative_filename = td->relative_filename;
+			}
 		}
 	}
 
