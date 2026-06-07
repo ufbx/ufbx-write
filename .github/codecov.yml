@@ -1,0 +1,23 @@
+parsers:
+  gcov:
+    branch_detection:
+      conditional: yes
+      loop: yes
+      method: yes
+      macro: yes
+comment: 
+  layout: "diff"
+
+flags:
+  tests:
+    paths:
+      - ufbx_write.c
+    carryforward: false
+  unit:
+    paths:
+      - ufbx_write.c
+    carryforward: false
+  dataset:
+    paths:
+      - ufbx_write.c
+    carryforward: false
