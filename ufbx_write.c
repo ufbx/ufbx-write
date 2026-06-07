@@ -13208,56 +13208,56 @@ ufbxw_abi void ufbxw_add_string(ufbxw_scene *scene, ufbxw_id id, const char *pro
 
 ufbxw_abi bool ufbxw_get_bool(ufbxw_scene *scene, ufbxw_id id, const char *prop)
 {
-	bool ret;
+	bool ret = false;
 	ufbxwi_get_prop(scene, id, prop, strlen(prop), &ret, UFBXW_PROP_DATA_BOOL);
 	return ret;
 }
 
 ufbxw_abi int32_t ufbxw_get_int(ufbxw_scene *scene, ufbxw_id id, const char *prop)
 {
-	int32_t ret;
+	int32_t ret = 0;
 	ufbxwi_get_prop(scene, id, prop, strlen(prop), &ret, UFBXW_PROP_DATA_INT32);
 	return ret;
 }
 
 ufbxw_abi int64_t ufbxw_get_int64(ufbxw_scene *scene, ufbxw_id id, const char *prop)
 {
-	int64_t ret;
+	int64_t ret = 0;
 	ufbxwi_get_prop(scene, id, prop, strlen(prop), &ret, UFBXW_PROP_DATA_INT64);
 	return ret;
 }
 
 ufbxw_abi ufbxw_real ufbxw_get_real(ufbxw_scene *scene, ufbxw_id id, const char *prop)
 {
-	ufbxw_real ret;
+	ufbxw_real ret = 0.0f;
 	ufbxwi_get_prop(scene, id, prop, strlen(prop), &ret, UFBXW_PROP_DATA_REAL);
 	return ret;
 }
 
 ufbxw_abi ufbxw_vec2 ufbxw_get_vec2(ufbxw_scene *scene, ufbxw_id id, const char *prop)
 {
-	ufbxw_vec2 ret;
+	ufbxw_vec2 ret = ufbxw_zero_vec2;
 	ufbxwi_get_prop(scene, id, prop, strlen(prop), &ret, UFBXW_PROP_DATA_VEC2);
 	return ret;
 }
 
 ufbxw_abi ufbxw_vec3 ufbxw_get_vec3(ufbxw_scene *scene, ufbxw_id id, const char *prop)
 {
-	ufbxw_vec3 ret;
+	ufbxw_vec3 ret = ufbxw_zero_vec3;
 	ufbxwi_get_prop(scene, id, prop, strlen(prop), &ret, UFBXW_PROP_DATA_VEC3);
 	return ret;
 }
 
 ufbxw_abi ufbxw_vec4 ufbxw_get_vec4(ufbxw_scene *scene, ufbxw_id id, const char *prop)
 {
-	ufbxw_vec4 ret;
+	ufbxw_vec4 ret = ufbxw_zero_vec4;
 	ufbxwi_get_prop(scene, id, prop, strlen(prop), &ret, UFBXW_PROP_DATA_VEC4);
 	return ret;
 }
 
 ufbxw_abi ufbxw_string ufbxw_get_string(ufbxw_scene *scene, ufbxw_id id, const char *prop)
 {
-	ufbxw_string ret;
+	ufbxw_string ret = ufbxw_empty_string;
 	ufbxwi_get_prop(scene, id, prop, strlen(prop), &ret, UFBXW_PROP_DATA_STRING);
 	return ret;
 }
