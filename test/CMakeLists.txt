@@ -6,6 +6,7 @@ include(CTest)
 
 option(USE_ASAN "Enable address sanitizer" OFF)
 option(USE_UBSAN "Enable undefined behavior sanitizer" OFF)
+option(USE_COVERAGE "Enable code coverage" OFF)
 
 add_library(ufbx_write)
 
@@ -55,6 +56,15 @@ if(USE_ASAN OR USE_UBSAN)
 
     target_compile_options(ufbx_write PRIVATE ${UFBXW_SANITIZER_OPTIONS})
     target_link_options(ufbx_write INTERFACE ${UFBXW_SANITIZER_LINK_OPTIONS})
+endif()
+
+if(USE_COVERAGE)
+    if(MSVC)
+        message(FATAL_ERROR "USE_COVERAGE is not supported with MSVC")
+    endif()
+
+    target_compile_options(ufbx_write PRIVATE --coverage)
+    target_link_options(ufbx_write INTERFACE --coverage)
 endif()
 
 add_subdirectory(ufbx)

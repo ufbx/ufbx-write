@@ -73,6 +73,88 @@ jobs:
       - name: Run unit tests
         run: build-test/unit/ufbxw_unit --verbose
 
+  ci_coverage_test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Update apt
+        run: sudo apt-get update
+      - name: Install apt dependencies
+        run: sudo apt-get install -y lcov llvm clang
+      - name: Configure test CMake
+        run: cmake -S test -B build-test -D USE_COVERAGE=ON -D CMAKE_BUILD_TYPE=Debug -D CMAKE_C_COMPILER=clang -D CMAKE_CXX_COMPILER=clang++
+      - name: Compile tests
+        run: cmake --build build-test -j 4
+      - name: Run tests
+        run: build-test/test/ufbxw_test --verbose
+      - name: Generate coverage
+        env:
+          LLVM_COV: llvm-cov
+        run: bash misc/generate_lcov.sh
+      - name: Upload coverage
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          curl -Os https://cli.codecov.io/latest/linux/codecov
+          sudo chmod +x codecov
+          ./codecov --verbose upload-process --disable-search --fail-on-error --plugin noop -t ${{ secrets.CODECOV_TOKEN }} -n ci_coverage_test-${{ github.run_id }} -F tests -f coverage.lcov
+
+  ci_coverage_unit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Update apt
+        run: sudo apt-get update
+      - name: Install apt dependencies
+        run: sudo apt-get install -y lcov llvm clang
+      - name: Configure test CMake
+        run: cmake -S test -B build-test -D USE_COVERAGE=ON -D CMAKE_BUILD_TYPE=Debug -D CMAKE_C_COMPILER=clang -D CMAKE_CXX_COMPILER=clang++
+      - name: Compile tests
+        run: cmake --build build-test -j 4
+      - name: Run unit tests
+        run: build-test/unit/ufbxw_unit --verbose
+      - name: Generate coverage
+        env:
+          LLVM_COV: llvm-cov
+        run: bash misc/generate_lcov.sh
+      - name: Upload coverage
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          curl -Os https://cli.codecov.io/latest/linux/codecov
+          sudo chmod +x codecov
+          ./codecov --verbose upload-process --disable-search --fail-on-error --plugin noop -t ${{ secrets.CODECOV_TOKEN }} -n ci_coverage_unit-${{ github.run_id }} -F unit -f coverage.lcov
+
+  ci_dataset:
+    runs-on: [self-hosted, dataset]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Configure test CMake
+        run: cmake -S test -B build-test -D USE_COVERAGE=ON -D USE_TO_CHARS=OFF -D CMAKE_BUILD_TYPE=RelWithDebInfo -D CMAKE_C_COMPILER=clang -D CMAKE_CXX_COMPILER=clang++
+      - name: Compile roundtrip
+        run: cmake --build build-test --target roundtrip -j 4
+      - name: Run dataset tests
+        run: python3 misc/check_dataset.py --exe build-test/roundtrip/roundtrip --root /mnt/fbx-files --exclude-list /mnt/fbx-files/roundtrip_exclude.list.json --host-url https://ufbx-dataset.b-cdn.net --threads 4
+      - name: Generate coverage
+        run: LLVM_COV=llvm-cov bash misc/generate_lcov.sh
+      - name: Upload coverage
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          set -x
+          curl -Os https://cli.codecov.io/latest/linux-arm64/codecov
+          chmod +x codecov
+          ./codecov --verbose upload-process --disable-search --fail-on-error --plugin noop -t ${{ secrets.CODECOV_TOKEN }} -n ci_dataset-${{ github.run_id }} -F dataset -f coverage.lcov
+
   ci_fuzz:
     runs-on: ubuntu-latest
     steps:
@@ -90,6 +172,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - name: Check for typos
         if: ${{ always() && !cancelled() }}
         uses: crate-ci/typos@master
@@ -110,3 +194,26 @@ jobs:
       - name: Run tests
         run: build/test-cpp
 
+  ci_formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Setup Uncrustify
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y uncrustify
+
+      - name: Format ufbx_write.c
+        if: ${{ always() && !cancelled() }}
+        run: |
+          uncrustify -c misc/uncrustify.cfg ufbx_write.c
+          diff -u ufbx_write.c ufbx_write.c.uncrustify
+
+      - name: Format ufbx_write.h
+        if: ${{ always() && !cancelled() }}
+        run: |
+          uncrustify -c misc/uncrustify.cfg ufbx_write.h
+          diff -u ufbx_write.h ufbx_write.h.uncrustify

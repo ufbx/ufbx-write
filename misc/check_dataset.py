@@ -10,8 +10,9 @@ import itertools
 import datetime
 import asyncio
 import asyncio.subprocess
+import shutil
 
-LATEST_SUPPORTED_DATE = "2025-06-10"
+LATEST_SUPPORTED_DATE = "2026-01-07"
 
 class TestModel(NamedTuple):
     fbx_path: str
@@ -144,6 +145,9 @@ def gather_dataset_tasks(root_dir, heavy, allow_unknown, last_supported_time):
         for filename in files:
             if not filename.endswith(".json"):
                 continue
+            if filename.endswith(".list.json"):
+                continue
+
             yield from create_dataset_task(root_dir, root, filename, heavy, allow_unknown, last_supported_time)
 
 if __name__ == "__main__":
@@ -151,7 +155,7 @@ if __name__ == "__main__":
 
     parser = ArgumentParser("check_dataset.py --root <root>")
     parser.add_argument("--root", required=True, help="Root directory to search for .json files")
-    parser.add_argument("--result", required=True, help="Result directory to store resulting files")
+    parser.add_argument("--result", help="Result directory to store resulting files")
     parser.add_argument("--host-url", default="", help="URL where the files are hosted")
     parser.add_argument("--exe", help="roundtrip.c executable")
     parser.add_argument("--verbose", action="store_true", help="Print verbose information")
@@ -159,6 +163,9 @@ if __name__ == "__main__":
     parser.add_argument("--allow-unknown", action="store_true", help="Allow unknown fields")
     parser.add_argument("--include-recent", action="store_true", help="Run tests that are too recent")
     parser.add_argument("--threads", type=int, default=1, help="Number of threads to use for running")
+    parser.add_argument("--quiet", action="store_true", help="Do not print successful test information")
+    parser.add_argument("--include-list", help="Specify an include list of files in a .json format")
+    parser.add_argument("--exclude-list", help="Specify an exclude list of files in a .json format")
     argv = parser.parse_args()
 
     host_url = argv.host_url if argv.host_url else argv.root
@@ -167,6 +174,16 @@ if __name__ == "__main__":
     latest_supported_time = datetime.datetime.strptime(LATEST_SUPPORTED_DATE, "%Y-%m-%d")
     if argv.include_recent:
         latest_supported_time = None
+
+    def load_case_list(path):
+        if not path:
+            return None
+        with open(path, "rt", encoding="utf-8") as f:
+            case_list = json.load(f)
+        return set(case_list["cases"])
+
+    include_set = load_case_list(argv.include_list)
+    exclude_set = load_case_list(argv.exclude_list)
 
     cases = list(gather_dataset_tasks(root_dir=argv.root, heavy=argv.heavy, allow_unknown=argv.allow_unknown, last_supported_time=latest_supported_time))
 
@@ -182,6 +199,16 @@ if __name__ == "__main__":
             path = os.path.relpath(path, root)
         path = path.replace("\\", "/")
         return f"{path}"
+
+    def case_filter(case):
+        rel_path = fmt_rel(case.json_path, argv.root)
+        if include_set is not None and rel_path not in include_set:
+            return False
+        if exclude_set is not None and rel_path in exclude_set:
+            return False
+        return True
+
+    cases = [c for c in cases if case_filter(c)]
 
     ok_count = 0
     test_count = 0
@@ -234,9 +261,18 @@ if __name__ == "__main__":
 
         case_run_count += 1
 
+        if argv.result:
+            for extra in case.extra_files:
+                rel_extra = fmt_rel(extra, argv.root)
+                result_extra = os.path.join(argv.result, rel_extra)
+                os.makedirs(os.path.dirname(result_extra), exist_ok=True)
+                shutil.copyfile(extra, result_extra)
+
         for model in case.models:
 
             extra = []
+
+            rel_path = fmt_rel(model.fbx_path, argv.root)
 
             name = fmt_rel(model.fbx_path, case.root)
 
@@ -250,25 +286,27 @@ if __name__ == "__main__":
 
             log()
 
-            rel_path = fmt_rel(model.fbx_path, argv.root)
-
             for opts in iter_options(case.options):
                 test_count += 1
 
                 opts_dict = { k: v for k,v in opts }
                 format = opts_dict["format"]
 
-                result_path = os.path.join(argv.result, rel_path)
-                result_path = os.path.splitext(result_path)[0]
-                result_path = f"{result_path}_7500_{format}.fbx"
-                os.makedirs(os.path.dirname(result_path), exist_ok=True)
+                result_args = []
+                if argv.result:
+                    result_path = os.path.join(argv.result, rel_path)
+                    result_path = os.path.splitext(result_path)[0]
+                    result_path = f"{result_path}_7500_{format}.fbx"
+                    os.makedirs(os.path.dirname(result_path), exist_ok=True)
+                    result_args = ["-o", result_path]
 
                 roundtrip_args = [
                     argv.exe,
                     model.fbx_path,
-                    "-o", result_path,
+                    *result_args,
                     "-f", format,
                     "--ascii", "fmtlib",
+                    "--advanced-transform",
                     "--compare",
                 ]
 
@@ -311,11 +349,16 @@ if __name__ == "__main__":
         if case_ok:
             case_ok_count += 1
 
+        if argv.quiet and case_ok:
+            lines = []
+
         return lines
 
     async def run_cases_simple():
         for case in cases:
-            await run_case(False, case)
+            lines = await run_case(argv.quiet, case)
+            if lines:
+                print("\n".join(lines))
 
     async def run_cases_threaded():
         tasks = []
@@ -326,7 +369,9 @@ if __name__ == "__main__":
             done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
             tasks = list(pending)
             for task in done:
-                print("\n".join(task.result()))
+                lines = task.result()
+                if lines:
+                    print("\n".join(lines))
 
         for case in cases:
             if len(tasks) >= num_threads:

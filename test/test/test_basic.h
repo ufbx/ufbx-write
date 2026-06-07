@@ -25,6 +25,97 @@ UFBXWT_TEST(memory_stats)
 }
 #endif
 
+UFBXWT_TEST(reconnect_node_parent)
+#if UFBXWT_IMPL
+{
+	ufbxw_scene *scene = ufbxw_create_scene(NULL);
+	ufbxwt_assert(scene);
+
+	ufbxw_node parent_a = ufbxwt_create_node(scene, "ParentA");
+	ufbxw_node parent_b = ufbxwt_create_node(scene, "ParentB");
+	ufbxw_node child = ufbxwt_create_node(scene, "Child");
+
+	ufbxw_node_set_parent(scene, child, parent_a);
+	ufbxwt_assert(ufbxw_node_get_parent(scene, child).id == parent_a.id);
+	ufbxwt_assert(ufbxw_node_get_num_children(scene, parent_a) == 1);
+	ufbxwt_assert(ufbxw_node_get_child(scene, parent_a, 0).id == child.id);
+
+	ufbxw_node_set_parent(scene, child, parent_b);
+	ufbxwt_assert(ufbxw_node_get_parent(scene, child).id == parent_b.id);
+	ufbxwt_assert(ufbxw_node_get_num_children(scene, parent_a) == 0);
+	ufbxwt_assert(ufbxw_node_get_num_children(scene, parent_b) == 1);
+	ufbxwt_assert(ufbxw_node_get_child(scene, parent_b, 0).id == child.id);
+
+	ufbxw_free_scene(scene);
+}
+#endif
+
+UFBXWT_TEST(connect_disconnect)
+#if UFBXWT_IMPL
+{
+	ufbxw_scene *scene = ufbxw_create_scene(NULL);
+	ufbxwt_assert(scene);
+
+	ufbxw_node parent = ufbxwt_create_node(scene, "Parent");
+	ufbxw_node child = ufbxwt_create_node(scene, "Child");
+
+	ufbxw_connect(scene, UFBXW_CONNECTION_NODE_PARENT, child.id, parent.id);
+	ufbxwt_assert(ufbxw_node_get_parent(scene, child).id == parent.id);
+	ufbxwt_assert(ufbxw_node_get_num_children(scene, parent) == 1);
+
+	ufbxw_disconnect(scene, UFBXW_CONNECTION_NODE_PARENT, child.id, parent.id);
+	ufbxwt_assert(ufbxw_node_get_parent(scene, child).id == ufbxw_null_id);
+	ufbxwt_assert(ufbxw_node_get_num_children(scene, parent) == 0);
+
+	ufbxw_free_scene(scene);
+}
+#endif
+
+UFBXWT_TEST(fbx_connect_disconnect)
+#if UFBXWT_IMPL
+{
+	ufbxw_scene *scene = ufbxw_create_scene(NULL);
+	ufbxwt_assert(scene);
+
+	ufbxw_node parent = ufbxwt_create_node(scene, "Parent");
+	ufbxw_node child = ufbxwt_create_node(scene, "Child");
+
+	ufbxw_fbx_connect(scene, child.id, parent.id);
+	ufbxwt_assert(ufbxw_node_get_parent(scene, child).id == parent.id);
+	ufbxwt_assert(ufbxw_node_get_num_children(scene, parent) == 1);
+
+	ufbxw_fbx_disconnect(scene, child.id, parent.id);
+	ufbxwt_assert(ufbxw_node_get_parent(scene, child).id == ufbxw_null_id);
+	ufbxwt_assert(ufbxw_node_get_num_children(scene, parent) == 0);
+
+	ufbxw_free_scene(scene);
+}
+#endif
+
+UFBXWT_TEST(delete_middle_parent)
+#if UFBXWT_IMPL
+{
+	ufbxw_scene *scene = ufbxw_create_scene(NULL);
+	ufbxwt_assert(scene);
+
+	ufbxw_node parent = ufbxwt_create_node(scene, "Parent");
+	ufbxw_node middle = ufbxwt_create_node(scene, "Middle");
+	ufbxw_node child = ufbxwt_create_node(scene, "Child");
+
+	ufbxw_node_set_parent(scene, middle, parent);
+	ufbxw_node_set_parent(scene, child, middle);
+	ufbxwt_assert(ufbxw_node_get_num_children(scene, parent) == 1);
+	ufbxwt_assert(ufbxw_node_get_child(scene, parent, 0).id == middle.id);
+	ufbxwt_assert(ufbxw_node_get_parent(scene, child).id == middle.id);
+
+	ufbxw_delete_element(scene, middle.id);
+	ufbxwt_assert(ufbxw_node_get_parent(scene, child).id == ufbxw_null_id);
+	ufbxwt_assert(ufbxw_node_get_num_children(scene, parent) == 0);
+
+	ufbxw_free_scene(scene);
+}
+#endif
+
 UFBXWT_SCENE_TEST(simple_node)
 #if UFBXWT_IMPL
 {
@@ -64,4 +155,3 @@ UFBXWT_SCENE_CHECK(simple_node)
 	ufbxwt_assert_close_uvec3(err, node->local_transform.scale, scale);
 }
 #endif
-

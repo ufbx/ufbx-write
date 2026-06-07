@@ -1,6 +1,13 @@
 #ifndef UFBXW_ZLIB_H_INCLUDED
 #define UFBXW_ZLIB_H_INCLUDED
 
+// Adapter for zlib DEFLATE implementation.
+//
+// https://zlib.net/
+//
+// NOTE: The ufbx_write internal DEFLATE implementation is significantly faster
+// than zlib. Use this only if you have a specific use case.
+
 #if !defined(ufbxw_zlib_abi)
 	#if defined(UFBXW_ZLIB_STATIC)
 		#define ufbxw_zlib_abi static
