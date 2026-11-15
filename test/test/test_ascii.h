@@ -109,3 +109,65 @@ UFBXWT_TEST(ascii_format_simple)
 	ufbxwt_ascii_format_test("simple", ufbxwt_deflate_scene_simple(), NULL, 64 * 1024);
 }
 #endif
+
+UFBXWT_TEST(ascii_format_fixed_precision)
+#if UFBXWT_IMPL
+{
+	static const float float_values[] = {
+		0.0f,
+		-0.0f,
+		1.23456789f,
+		-1.23456789f,
+		0.000123456789f,
+		12345678.0f,
+		1.0e-40f,
+		3.4e38f,
+		9.87654321f,
+	};
+	static const double double_values[] = {
+		0.0,
+		-0.0,
+		1.2345678901234567,
+		-1.2345678901234567,
+		0.00012345678901234567,
+		1234567890123456.0,
+		1.0e-310,
+		1.7e308,
+		9.8765432109876543,
+	};
+	static const ufbxwt_ascii_format_impl ascii_impls[] = {
+		UFBXWT_ASCII_FORMAT_IMPL_FMTLIB,
+		UFBXWT_ASCII_FORMAT_IMPL_TO_CHARS,
+		UFBXWT_ASCII_FORMAT_IMPL_ZMIJ,
+		UFBXWT_ASCII_FORMAT_IMPL_ZMIJ_C,
+	};
+
+	for (int ascii_ix = 0; ascii_ix < ufbxwt_arraycount(ascii_impls); ascii_ix++) {
+		ufbxwt_ascii_format_impl ascii_impl = ascii_impls[ascii_ix];
+		ufbxw_ascii_formatter formatter = { 0 };
+		if (!ufbxwt_ascii_format_setup(&formatter, ascii_impl)) {
+			continue;
+		}
+		ufbxwt_logf("ascii: %s", ufbxwt_ascii_format_name(ascii_impl));
+
+		char result[512], ref[512];
+		size_t ref_size = 0;
+		for (size_t i = 0; i < ufbxwt_arraycount(float_values); i++) {
+			ref_size += (size_t)snprintf(ref + ref_size, sizeof(ref) - ref_size, "%.7g,", (double)float_values[i]);
+		}
+
+		size_t result_size = formatter.format_float_fn(formatter.user, result, sizeof(result), float_values, ufbxwt_arraycount(float_values), UFBXW_ASCII_FLOAT_FORMAT_FIXED_PRECISION);
+		ufbxwt_assert(result_size == ref_size);
+		ufbxwt_assert(memcmp(result, ref, result_size) == 0);
+
+		ref_size = 0;
+		for (size_t i = 0; i < ufbxwt_arraycount(double_values); i++) {
+			ref_size += (size_t)snprintf(ref + ref_size, sizeof(ref) - ref_size, "%.15g,", double_values[i]);
+		}
+
+		result_size = formatter.format_double_fn(formatter.user, result, sizeof(result), double_values, ufbxwt_arraycount(double_values), UFBXW_ASCII_FLOAT_FORMAT_FIXED_PRECISION);
+		ufbxwt_assert(result_size == ref_size);
+		ufbxwt_assert(memcmp(result, ref, result_size) == 0);
+	}
+}
+#endif
