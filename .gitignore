@@ -24,3 +24,6 @@ __pycache__/
 # FBX backup files
 
 *.bck/
+
+# Generic temporary files
+temp/
