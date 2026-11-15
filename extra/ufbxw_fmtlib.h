@@ -109,12 +109,12 @@ static size_t ufbxw_fmtlib_format_float(void *user, char *dst, size_t dst_size, 
 		}
 	} else if (format == UFBXW_ASCII_FLOAT_FORMAT_ROUND_TRIP) {
 		while (src_count >= 4) {
-			d = fmt::format_to(d, UFBXWI_FMT("{:g},{:g},{:g},{:g},"), src[0], src[1], src[2], src[3]);
+			d = fmt::format_to(d, UFBXWI_FMT("{},{},{},{},"), src[0], src[1], src[2], src[3]);
 			src += 4;
 			src_count -= 4;
 		}
 		while (src_count > 0) {
-			d = fmt::format_to(d, UFBXWI_FMT("{:g},"), src[0]);
+			d = fmt::format_to(d, UFBXWI_FMT("{},"), src[0]);
 			src += 1;
 			src_count -= 1;
 		}
@@ -140,12 +140,12 @@ static size_t ufbxw_fmtlib_format_double(void *user, char *dst, size_t dst_size,
 		}
 	} else if (format == UFBXW_ASCII_FLOAT_FORMAT_ROUND_TRIP) {
 		while (src_count >= 4) {
-			d = fmt::format_to(d, UFBXWI_FMT("{:g},{:g},{:g},{:g},"), src[0], src[1], src[2], src[3]);
+			d = fmt::format_to(d, UFBXWI_FMT("{},{},{},{},"), src[0], src[1], src[2], src[3]);
 			src += 4;
 			src_count -= 4;
 		}
 		while (src_count > 0) {
-			d = fmt::format_to(d, UFBXWI_FMT("{:g},"), src[0]);
+			d = fmt::format_to(d, UFBXWI_FMT("{},"), src[0]);
 			src += 1;
 			src_count -= 1;
 		}
