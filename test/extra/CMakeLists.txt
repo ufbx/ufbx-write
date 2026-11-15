@@ -94,7 +94,7 @@ if(USE_ZMIJ)
     if(MSVC)
         # MSVC fails to resolve `float_traits::is_iec559` without `/permissive-`
         # warning C4804: '-': unsafe use of type 'bool' in operation
-        target_compile_options(zmij PRIVATE /permissive- /wd4804)
+        target_compile_options(zmij PUBLIC /permissive- /wd4804)
     endif()
 
     add_library(zmij_c STATIC EXCLUDE_FROM_ALL
