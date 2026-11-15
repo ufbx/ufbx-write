@@ -1042,6 +1042,7 @@ int main(int argc, char **argv)
 		ufbxwt_assert(0 && "specify -f ascii or -f binary");
 	}
 	save_opts.version = 7500;
+	save_opts.ascii_float_format = UFBXW_ASCII_FLOAT_FORMAT_ROUND_TRIP;
 
 	ufbxwt_assert(ufbxwt_deflate_setup(&save_opts.deflate, deflate_impl));
 	ufbxwt_assert(ufbxwt_ascii_format_setup(&save_opts.ascii_formatter, ascii_impl));
