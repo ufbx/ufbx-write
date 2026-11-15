@@ -13801,6 +13801,15 @@ ufbxw_abi void ufbxw_mesh_set_normals(ufbxw_scene *scene, ufbxw_mesh mesh, ufbxw
 	ufbxw_mesh_set_attribute(scene, mesh, UFBXW_MESH_ATTRIBUTE_NORMAL, 0, &desc);
 }
 
+ufbxw_abi void ufbxw_mesh_set_normals_indexed(ufbxw_scene *scene, ufbxw_mesh mesh, ufbxw_vec3_buffer normals, ufbxw_int_buffer indices, ufbxw_attribute_mapping mapping)
+{
+	ufbxw_mesh_attribute_desc desc = { 0 };
+	desc.values = normals.id;
+	desc.indices = indices.id;
+	desc.mapping = mapping;
+	ufbxw_mesh_set_attribute(scene, mesh, UFBXW_MESH_ATTRIBUTE_NORMAL, 0, &desc);
+}
+
 ufbxw_abi ufbxw_light ufbxw_create_light(ufbxw_scene *scene, ufbxw_node node)
 {
 	ufbxw_light light = { ufbxw_create_element(scene, UFBXW_ELEMENT_LIGHT) };
