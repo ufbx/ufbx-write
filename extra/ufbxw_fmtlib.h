@@ -129,12 +129,12 @@ static size_t ufbxw_fmtlib_format_double(void *user, char *dst, size_t dst_size,
 
 	if (format == UFBXW_ASCII_FLOAT_FORMAT_FIXED_PRECISION) {
 		while (src_count >= 4) {
-			d = fmt::format_to(d, UFBXWI_FMT("{:.16g},{:.16g},{:.16g},{:.16g},"), src[0], src[1], src[2], src[3]);
+			d = fmt::format_to(d, UFBXWI_FMT("{:.15g},{:.15g},{:.15g},{:.15g},"), src[0], src[1], src[2], src[3]);
 			src += 4;
 			src_count -= 4;
 		}
 		while (src_count > 0) {
-			d = fmt::format_to(d, UFBXWI_FMT("{:.16g},"), src[0]);
+			d = fmt::format_to(d, UFBXWI_FMT("{:.15g},"), src[0]);
 			src += 1;
 			src_count -= 1;
 		}
