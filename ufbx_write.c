@@ -12558,6 +12558,12 @@ ufbxw_abi void ufbxw_buffer_set_deleter(ufbxw_scene *scene, ufbxw_buffer_id buff
 	ufbxwi_buffer_set_deleter(&scene->buffers, buffer, fn, user);
 }
 
+ufbxw_abi ufbxw_byte_buffer ufbxw_retain_byte_buffer(ufbxw_scene *scene, ufbxw_byte_buffer buffer)
+{
+	ufbxw_retain_buffer(scene, buffer.id);
+	return buffer;
+}
+
 ufbxw_abi ufbxw_byte_buffer ufbxw_create_byte_buffer(ufbxw_scene *scene, size_t count)
 {
 	ufbxw_buffer_id id = ufbxwi_create_owned_buffer(&scene->buffers, UFBXWI_BUFFER_TYPE_BYTE, count);
@@ -12588,6 +12594,12 @@ ufbxw_abi ufbxw_byte_buffer ufbxw_external_byte_stream(ufbxw_scene *scene, ufbxw
 	stream_fn.byte_fn = fn;
 	ufbxw_buffer_id id = ufbxwi_create_stream_buffer(&scene->buffers, UFBXWI_BUFFER_TYPE_BYTE, stream_fn, user, count);
 	return ufbxwi_to_user_byte_buffer(&scene->buffers, id);
+}
+
+ufbxw_abi ufbxw_int_buffer ufbxw_retain_int_buffer(ufbxw_scene *scene, ufbxw_int_buffer buffer)
+{
+	ufbxw_retain_buffer(scene, buffer.id);
+	return buffer;
 }
 
 ufbxw_abi ufbxw_int_buffer ufbxw_create_int_buffer(ufbxw_scene *scene, size_t count)
@@ -12622,6 +12634,12 @@ ufbxw_abi ufbxw_int_buffer ufbxw_external_int_stream(ufbxw_scene *scene, ufbxw_i
 	return ufbxwi_to_user_int_buffer(&scene->buffers, id);
 }
 
+ufbxw_abi ufbxw_long_buffer ufbxw_retain_long_buffer(ufbxw_scene *scene, ufbxw_long_buffer buffer)
+{
+	ufbxw_retain_buffer(scene, buffer.id);
+	return buffer;
+}
+
 ufbxw_abi ufbxw_long_buffer ufbxw_create_long_buffer(ufbxw_scene *scene, size_t count)
 {
 	ufbxw_buffer_id id = ufbxwi_create_owned_buffer(&scene->buffers, UFBXWI_BUFFER_TYPE_LONG, count);
@@ -12652,6 +12670,12 @@ ufbxw_abi ufbxw_long_buffer ufbxw_external_long_stream(ufbxw_scene *scene, ufbxw
 	stream_fn.long_fn = fn;
 	ufbxw_buffer_id id = ufbxwi_create_stream_buffer(&scene->buffers, UFBXWI_BUFFER_TYPE_LONG, stream_fn, user, count);
 	return ufbxwi_to_user_long_buffer(&scene->buffers, id);
+}
+
+ufbxw_abi ufbxw_real_buffer ufbxw_retain_real_buffer(ufbxw_scene *scene, ufbxw_real_buffer buffer)
+{
+	ufbxw_retain_buffer(scene, buffer.id);
+	return buffer;
 }
 
 ufbxw_abi ufbxw_real_buffer ufbxw_create_real_buffer(ufbxw_scene *scene, size_t count)
@@ -12686,6 +12710,12 @@ ufbxw_abi ufbxw_real_buffer ufbxw_external_real_stream(ufbxw_scene *scene, ufbxw
 	return ufbxwi_to_user_real_buffer(&scene->buffers, id);
 }
 
+ufbxw_abi ufbxw_vec2_buffer ufbxw_retain_vec2_buffer(ufbxw_scene *scene, ufbxw_vec2_buffer buffer)
+{
+	ufbxw_retain_buffer(scene, buffer.id);
+	return buffer;
+}
+
 ufbxw_abi ufbxw_vec2_buffer ufbxw_create_vec2_buffer(ufbxw_scene *scene, size_t count)
 {
 	ufbxw_buffer_id id = ufbxwi_create_owned_buffer(&scene->buffers, UFBXWI_BUFFER_TYPE_VEC2, count);
@@ -12716,6 +12746,12 @@ ufbxw_abi ufbxw_vec2_buffer ufbxw_external_vec2_stream(ufbxw_scene *scene, ufbxw
 	stream_fn.vec2_fn = fn;
 	ufbxw_buffer_id id = ufbxwi_create_stream_buffer(&scene->buffers, UFBXWI_BUFFER_TYPE_VEC2, stream_fn, user, count);
 	return ufbxwi_to_user_vec2_buffer(&scene->buffers, id);
+}
+
+ufbxw_abi ufbxw_vec3_buffer ufbxw_retain_vec3_buffer(ufbxw_scene *scene, ufbxw_vec3_buffer buffer)
+{
+	ufbxw_retain_buffer(scene, buffer.id);
+	return buffer;
 }
 
 ufbxw_abi ufbxw_vec3_buffer ufbxw_create_vec3_buffer(ufbxw_scene *scene, size_t count)
@@ -12750,6 +12786,12 @@ ufbxw_abi ufbxw_vec3_buffer ufbxw_external_vec3_stream(ufbxw_scene *scene, ufbxw
 	return ufbxwi_to_user_vec3_buffer(&scene->buffers, id);
 }
 
+ufbxw_abi ufbxw_vec4_buffer ufbxw_retain_vec4_buffer(ufbxw_scene *scene, ufbxw_vec4_buffer buffer)
+{
+	ufbxw_retain_buffer(scene, buffer.id);
+	return buffer;
+}
+
 ufbxw_abi ufbxw_vec4_buffer ufbxw_create_vec4_buffer(ufbxw_scene *scene, size_t count)
 {
 	ufbxw_buffer_id id = ufbxwi_create_owned_buffer(&scene->buffers, UFBXWI_BUFFER_TYPE_VEC4, count);
@@ -12780,6 +12822,12 @@ ufbxw_abi ufbxw_vec4_buffer ufbxw_external_vec4_stream(ufbxw_scene *scene, ufbxw
 	stream_fn.vec4_fn = fn;
 	ufbxw_buffer_id id = ufbxwi_create_stream_buffer(&scene->buffers, UFBXWI_BUFFER_TYPE_VEC4, stream_fn, user, count);
 	return ufbxwi_to_user_vec4_buffer(&scene->buffers, id);
+}
+
+ufbxw_abi ufbxw_float_buffer ufbxw_retain_float_buffer(ufbxw_scene *scene, ufbxw_float_buffer buffer)
+{
+	ufbxw_retain_buffer(scene, buffer.id);
+	return buffer;
 }
 
 ufbxw_abi ufbxw_float_buffer ufbxw_create_float_buffer(ufbxw_scene *scene, size_t count)
