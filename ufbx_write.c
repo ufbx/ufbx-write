@@ -9752,7 +9752,7 @@ static ufbxw_string ufbxwi_save_format(ufbxwi_save_context *sc, const char *fmt,
 
 static void ufbxwi_init_save_thread_context(ufbxwi_save_context *sc, ufbxwi_save_thread_context *tc)
 {
-	if (sc->task_queue.enabled) {
+	if (sc->thread_pool.enabled) {
 		tc->ator = &sc->thread_ator;
 		tc->error = &sc->thread_error;
 	} else {
