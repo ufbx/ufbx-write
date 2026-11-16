@@ -8,6 +8,11 @@ parsers:
 comment: 
   layout: "diff"
 
+coverage:
+  status:
+    project: false
+    patch: false
+
 flags:
   tests:
     paths:

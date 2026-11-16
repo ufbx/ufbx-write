@@ -5,8 +5,6 @@
 //
 // https://github.com/vitaut/zmij
 //
-// Only supports floating point formatting with `UFBXW_ASCII_FLOAT_FORMAT_ROUND_TRIP`.
-//
 // In one translation unit, do the following:
 //
 //     #include "path/to/ufbx_write.h"
@@ -64,27 +62,43 @@ ufbxw_zmij_c_abi void ufbxw_zmij_c_setup(struct ufbxw_ascii_formatter *formatter
 
 ufbxw_zmij_static_assert(float_buffer_size, zmij_float_buffer_size <= UFBXW_ASCII_FORMAT_FLOAT_CHARS + UFBXW_ASCII_FORMAT_EXTRA_BUFFER_CHARS);
 ufbxw_zmij_static_assert(double_buffer_size, zmij_double_buffer_size <= UFBXW_ASCII_FORMAT_DOUBLE_CHARS + UFBXW_ASCII_FORMAT_EXTRA_BUFFER_CHARS);
+ufbxw_zmij_static_assert(float_scientific_buffer_size, zmij_float_scientific_buffer_size <= UFBXW_ASCII_FORMAT_FLOAT_CHARS + UFBXW_ASCII_FORMAT_EXTRA_BUFFER_CHARS);
+ufbxw_zmij_static_assert(double_scientific_buffer_size, zmij_double_scientific_buffer_size <= UFBXW_ASCII_FORMAT_DOUBLE_CHARS + UFBXW_ASCII_FORMAT_EXTRA_BUFFER_CHARS);
 
 static size_t ufbxw_zmij_c_format_float(void *user, char *dst, size_t dst_size, const float *src, size_t src_count, ufbxw_ascii_float_format format)
 {
-	if (format != UFBXW_ASCII_FLOAT_FORMAT_ROUND_TRIP) return SIZE_MAX;
-
 	char *d = dst;
-	for (size_t i = 0; i < src_count; i++) {
-		d += zmij_write_float(d, zmij_float_buffer_size, src[i]);
-		*d++ = ',';
+	if (format == UFBXW_ASCII_FLOAT_FORMAT_FIXED_PRECISION) {
+		for (size_t i = 0; i < src_count; i++) {
+			d = zmij_write_general_f(d, zmij_float_scientific_buffer_size, src[i], 7);
+			*d++ = ',';
+		}
+	} else if (format == UFBXW_ASCII_FLOAT_FORMAT_ROUND_TRIP) {
+		for (size_t i = 0; i < src_count; i++) {
+			d = zmij_write_f(d, zmij_float_buffer_size, src[i]);
+			*d++ = ',';
+		}
+	} else {
+		return SIZE_MAX;
 	}
 	return (size_t)(d - dst);
 }
 
 static size_t ufbxw_zmij_c_format_double(void *user, char *dst, size_t dst_size, const double *src, size_t src_count, ufbxw_ascii_float_format format)
 {
-	if (format != UFBXW_ASCII_FLOAT_FORMAT_ROUND_TRIP) return SIZE_MAX;
-
 	char *d = dst;
-	for (size_t i = 0; i < src_count; i++) {
-		d += zmij_write_double(d, zmij_double_buffer_size, src[i]);
-		*d++ = ',';
+	if (format == UFBXW_ASCII_FLOAT_FORMAT_FIXED_PRECISION) {
+		for (size_t i = 0; i < src_count; i++) {
+			d = zmij_write_general(d, zmij_double_scientific_buffer_size, src[i], 15);
+			*d++ = ',';
+		}
+	} else if (format == UFBXW_ASCII_FLOAT_FORMAT_ROUND_TRIP) {
+		for (size_t i = 0; i < src_count; i++) {
+			d = zmij_write(d, zmij_double_buffer_size, src[i]);
+			*d++ = ',';
+		}
+	} else {
+		return SIZE_MAX;
 	}
 	return (size_t)(d - dst);
 }

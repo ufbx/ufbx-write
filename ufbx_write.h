@@ -72,7 +72,7 @@
 // `ufbxw_source_version` contains the version of the corresponding source file.
 // HINT: The version can be compared numerically to the result of `ufbxw_pack_version()`,
 // for example `#if UFBXW_VERSION >= ufbxw_pack_version(0, 12, 0)`.
-#define UFBXW_HEADER_VERSION ufbxw_pack_version(0, 2, 0)
+#define UFBXW_HEADER_VERSION ufbxw_pack_version(0, 3, 0)
 #define UFBXW_VERSION UFBXW_HEADER_VERSION
 
 // -- Configuration
@@ -704,48 +704,56 @@ ufbxw_abi ufbxw_byte_buffer ufbxw_copy_byte_array(ufbxw_scene *scene, const void
 ufbxw_abi ufbxw_byte_buffer ufbxw_view_byte_array(ufbxw_scene *scene, const void *data, size_t count);
 ufbxw_abi ufbxw_byte_buffer ufbxw_external_byte_array(ufbxw_scene *scene, const void *data, size_t count);
 ufbxw_abi ufbxw_byte_buffer ufbxw_external_byte_stream(ufbxw_scene *scene, ufbxw_byte_stream_fn *fn, void *user, size_t count);
+ufbxw_abi ufbxw_byte_buffer ufbxw_retain_byte_buffer(ufbxw_scene *scene, ufbxw_byte_buffer buffer);
 
 ufbxw_abi ufbxw_int_buffer ufbxw_create_int_buffer(ufbxw_scene *scene, size_t count);
 ufbxw_abi ufbxw_int_buffer ufbxw_copy_int_array(ufbxw_scene *scene, const int32_t *data, size_t count);
 ufbxw_abi ufbxw_int_buffer ufbxw_view_int_array(ufbxw_scene *scene, const int32_t *data, size_t count);
 ufbxw_abi ufbxw_int_buffer ufbxw_external_int_array(ufbxw_scene *scene, const int32_t *data, size_t count);
 ufbxw_abi ufbxw_int_buffer ufbxw_external_int_stream(ufbxw_scene *scene, ufbxw_int_stream_fn *fn, void *user, size_t count);
+ufbxw_abi ufbxw_int_buffer ufbxw_retain_int_buffer(ufbxw_scene *scene, ufbxw_int_buffer buffer);
 
 ufbxw_abi ufbxw_long_buffer ufbxw_create_long_buffer(ufbxw_scene *scene, size_t count);
 ufbxw_abi ufbxw_long_buffer ufbxw_copy_long_array(ufbxw_scene *scene, const int64_t *data, size_t count);
 ufbxw_abi ufbxw_long_buffer ufbxw_view_long_array(ufbxw_scene *scene, const int64_t *data, size_t count);
 ufbxw_abi ufbxw_long_buffer ufbxw_external_long_array(ufbxw_scene *scene, const int64_t *data, size_t count);
 ufbxw_abi ufbxw_long_buffer ufbxw_external_long_stream(ufbxw_scene *scene, ufbxw_long_stream_fn *fn, void *user, size_t count);
+ufbxw_abi ufbxw_long_buffer ufbxw_retain_long_buffer(ufbxw_scene *scene, ufbxw_long_buffer buffer);
 
 ufbxw_abi ufbxw_real_buffer ufbxw_create_real_buffer(ufbxw_scene *scene, size_t count);
 ufbxw_abi ufbxw_real_buffer ufbxw_copy_real_array(ufbxw_scene *scene, const ufbxw_real *data, size_t count);
 ufbxw_abi ufbxw_real_buffer ufbxw_view_real_array(ufbxw_scene *scene, const ufbxw_real *data, size_t count);
 ufbxw_abi ufbxw_real_buffer ufbxw_external_real_array(ufbxw_scene *scene, const ufbxw_real *data, size_t count);
 ufbxw_abi ufbxw_real_buffer ufbxw_external_real_stream(ufbxw_scene *scene, ufbxw_real_stream_fn *fn, void *user, size_t count);
+ufbxw_abi ufbxw_real_buffer ufbxw_retain_real_buffer(ufbxw_scene *scene, ufbxw_real_buffer buffer);
 
 ufbxw_abi ufbxw_vec2_buffer ufbxw_create_vec2_buffer(ufbxw_scene *scene, size_t count);
 ufbxw_abi ufbxw_vec2_buffer ufbxw_copy_vec2_array(ufbxw_scene *scene, const ufbxw_vec2 *data, size_t count);
 ufbxw_abi ufbxw_vec2_buffer ufbxw_view_vec2_array(ufbxw_scene *scene, const ufbxw_vec2 *data, size_t count);
 ufbxw_abi ufbxw_vec2_buffer ufbxw_external_vec2_array(ufbxw_scene *scene, const ufbxw_vec2 *data, size_t count);
 ufbxw_abi ufbxw_vec2_buffer ufbxw_external_vec2_stream(ufbxw_scene *scene, ufbxw_vec2_stream_fn *fn, void *user, size_t count);
+ufbxw_abi ufbxw_vec2_buffer ufbxw_retain_vec2_buffer(ufbxw_scene *scene, ufbxw_vec2_buffer buffer);
 
 ufbxw_abi ufbxw_vec3_buffer ufbxw_create_vec3_buffer(ufbxw_scene *scene, size_t count);
 ufbxw_abi ufbxw_vec3_buffer ufbxw_copy_vec3_array(ufbxw_scene *scene, const ufbxw_vec3 *data, size_t count);
 ufbxw_abi ufbxw_vec3_buffer ufbxw_view_vec3_array(ufbxw_scene *scene, const ufbxw_vec3 *data, size_t count);
 ufbxw_abi ufbxw_vec3_buffer ufbxw_external_vec3_array(ufbxw_scene *scene, const ufbxw_vec3 *data, size_t count);
 ufbxw_abi ufbxw_vec3_buffer ufbxw_external_vec3_stream(ufbxw_scene *scene, ufbxw_vec3_stream_fn *fn, void *user, size_t count);
+ufbxw_abi ufbxw_vec3_buffer ufbxw_retain_vec3_buffer(ufbxw_scene *scene, ufbxw_vec3_buffer buffer);
 
 ufbxw_abi ufbxw_vec4_buffer ufbxw_create_vec4_buffer(ufbxw_scene *scene, size_t count);
 ufbxw_abi ufbxw_vec4_buffer ufbxw_copy_vec4_array(ufbxw_scene *scene, const ufbxw_vec4 *data, size_t count);
 ufbxw_abi ufbxw_vec4_buffer ufbxw_view_vec4_array(ufbxw_scene *scene, const ufbxw_vec4 *data, size_t count);
 ufbxw_abi ufbxw_vec4_buffer ufbxw_external_vec4_array(ufbxw_scene *scene, const ufbxw_vec4 *data, size_t count);
 ufbxw_abi ufbxw_vec4_buffer ufbxw_external_vec4_stream(ufbxw_scene *scene, ufbxw_vec4_stream_fn *fn, void *user, size_t count);
+ufbxw_abi ufbxw_vec4_buffer ufbxw_retain_vec4_buffer(ufbxw_scene *scene, ufbxw_vec4_buffer buffer);
 
 ufbxw_abi ufbxw_float_buffer ufbxw_create_float_buffer(ufbxw_scene *scene, size_t count);
 ufbxw_abi ufbxw_float_buffer ufbxw_copy_float_array(ufbxw_scene *scene, const float *data, size_t count);
 ufbxw_abi ufbxw_float_buffer ufbxw_view_float_array(ufbxw_scene *scene, const float *data, size_t count);
 ufbxw_abi ufbxw_float_buffer ufbxw_external_float_array(ufbxw_scene *scene, const float *data, size_t count);
 ufbxw_abi ufbxw_float_buffer ufbxw_external_float_stream(ufbxw_scene *scene, ufbxw_float_stream_fn *fn, void *user, size_t count);
+ufbxw_abi ufbxw_float_buffer ufbxw_retain_float_buffer(ufbxw_scene *scene, ufbxw_float_buffer buffer);
 
 // TODO: Lock/unlock version for Rust
 ufbxw_abi ufbxw_byte_list ufbxw_edit_byte_buffer(ufbxw_scene *scene, ufbxw_byte_buffer buffer);
@@ -969,6 +977,7 @@ ufbxw_abi void ufbxw_mesh_set_polygons(ufbxw_scene *scene, ufbxw_mesh mesh, ufbx
 ufbxw_abi void ufbxw_mesh_set_fbx_polygon_vertex_index(ufbxw_scene *scene, ufbxw_mesh mesh, ufbxw_int_buffer polygon_vertex_index);
 
 ufbxw_abi void ufbxw_mesh_set_normals(ufbxw_scene *scene, ufbxw_mesh mesh, ufbxw_vec3_buffer normals, ufbxw_attribute_mapping mapping);
+ufbxw_abi void ufbxw_mesh_set_normals_indexed(ufbxw_scene *scene, ufbxw_mesh mesh, ufbxw_vec3_buffer normals, ufbxw_int_buffer indices, ufbxw_attribute_mapping mapping);
 
 ufbxw_abi void ufbxw_mesh_set_uvs(ufbxw_scene *scene, ufbxw_mesh mesh, int32_t set, ufbxw_vec2_buffer uvs, ufbxw_attribute_mapping mapping);
 ufbxw_abi void ufbxw_mesh_set_uvs_indexed(ufbxw_scene *scene, ufbxw_mesh mesh, int32_t set, ufbxw_vec2_buffer uvs, ufbxw_int_buffer indices, ufbxw_attribute_mapping mapping);

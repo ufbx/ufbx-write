@@ -219,3 +219,173 @@ UFBXWT_SCENE_CHECK(mesh_wave)
 }
 #endif
 
+UFBXWT_SCENE_TEST(mesh_attributes)
+#if UFBXWT_IMPL
+{
+	ufbxw_vec3 vertices[] = {
+		{ -1.0f, 0.0f, -1.0f },
+		{ +1.0f, 0.0f, -1.0f },
+		{ -1.0f, 0.0f, +1.0f },
+		{ +1.0f, 0.0f, +1.0f },
+	};
+	int32_t polygon_indices[] = { 0, 2, 3, 1 };
+	int32_t face_offsets[] = { 0, 4 };
+	int32_t attribute_indices[] = { 2, 0, 2, 1 };
+	ufbxw_vec3 normals[] = {
+		{ 1.0f, 0.0f, 0.0f },
+		{ 0.0f, 1.0f, 0.0f },
+		{ 0.0f, 0.0f, 1.0f },
+		{ -1.0f, 0.0f, 0.0f },
+	};
+	ufbxw_vec3 tangents[] = {
+		{ 0.0f, 1.0f, 0.0f },
+		{ 0.0f, 0.0f, 1.0f },
+		{ 1.0f, 0.0f, 0.0f },
+		{ 0.0f, -1.0f, 0.0f },
+	};
+	ufbxw_vec3 binormals[] = {
+		{ 0.0f, 0.0f, 1.0f },
+		{ 1.0f, 0.0f, 0.0f },
+		{ 0.0f, 1.0f, 0.0f },
+		{ 0.0f, 0.0f, -1.0f },
+	};
+	ufbxw_vec2 uvs[] = {
+		{ 0.0f, 0.0f }, { 1.0f, 0.0f }, { 0.0f, 1.0f }, { 1.0f, 1.0f },
+	};
+	ufbxw_vec4 colors[] = {
+		{ 1.0f, 0.0f, 0.0f, 1.0f },
+		{ 0.0f, 1.0f, 0.0f, 0.5f },
+		{ 0.0f, 0.0f, 1.0f, 0.25f },
+		{ 1.0f, 1.0f, 1.0f, 0.0f },
+	};
+
+	for (int indexed = 0; indexed < 2; indexed++) {
+		ufbxw_vec3_buffer vertex_buffer = ufbxw_view_vec3_array(scene, vertices, 4);
+		ufbxw_int_buffer polygon_buffer = ufbxw_view_int_array(scene, polygon_indices, 4);
+		ufbxw_int_buffer face_buffer = ufbxw_view_int_array(scene, face_offsets, ufbxwt_arraycount(face_offsets));
+		ufbxw_int_buffer index_buffer = ufbxw_view_int_array(scene, attribute_indices, 4);
+		ufbxw_vec3_buffer normal_buffer = ufbxw_view_vec3_array(scene, normals, 4);
+		ufbxw_vec3_buffer tangent_buffer = ufbxw_view_vec3_array(scene, tangents, 4);
+		ufbxw_vec3_buffer binormal_buffer = ufbxw_view_vec3_array(scene, binormals, 4);
+		ufbxw_vec2_buffer uv_buffer = ufbxw_view_vec2_array(scene, uvs, 4);
+		ufbxw_vec4_buffer color_buffer = ufbxw_view_vec4_array(scene, colors, 4);
+
+		ufbxw_node node = ufbxwt_create_node(scene, indexed ? "Indexed" : "Direct");
+
+		ufbxw_vec3 position = { indexed ? 1.0f : -1.0f, 0.0f, 0.0f };
+		ufbxw_node_set_translation(scene, node, position);
+
+		ufbxw_mesh mesh = ufbxw_create_mesh(scene);
+		ufbxw_mesh_add_instance(scene, mesh, node);
+		ufbxw_mesh_set_vertices(scene, mesh, vertex_buffer);
+		ufbxw_mesh_set_polygons(scene, mesh, polygon_buffer, face_buffer);
+
+		if (indexed) {
+			ufbxw_mesh_set_normals_indexed(scene, mesh, normal_buffer, ufbxw_retain_int_buffer(scene, index_buffer), UFBXW_ATTRIBUTE_MAPPING_POLYGON_VERTEX);
+			ufbxw_mesh_set_uvs_indexed(scene, mesh, 0, uv_buffer, ufbxw_retain_int_buffer(scene, index_buffer), UFBXW_ATTRIBUTE_MAPPING_POLYGON_VERTEX);
+			ufbxw_mesh_set_colors_indexed(scene, mesh, 0, color_buffer, ufbxw_retain_int_buffer(scene, index_buffer), UFBXW_ATTRIBUTE_MAPPING_POLYGON_VERTEX);
+
+			{
+				ufbxw_mesh_attribute_desc desc = { 0 };
+				desc.mapping = UFBXW_ATTRIBUTE_MAPPING_POLYGON_VERTEX;
+				desc.values = tangent_buffer.id;
+				desc.indices = ufbxw_retain_int_buffer(scene, index_buffer).id;
+				ufbxw_mesh_set_attribute(scene, mesh, UFBXW_MESH_ATTRIBUTE_TANGENT, 0, &desc);
+			}
+
+			{
+				ufbxw_mesh_attribute_desc desc = { 0 };
+				desc.mapping = UFBXW_ATTRIBUTE_MAPPING_POLYGON_VERTEX;
+				desc.values = binormal_buffer.id;
+				desc.indices = ufbxw_retain_int_buffer(scene, index_buffer).id;
+				ufbxw_mesh_set_attribute(scene, mesh, UFBXW_MESH_ATTRIBUTE_BINORMAL, 0, &desc);
+			}
+		} else {
+			ufbxw_mesh_set_normals(scene, mesh, normal_buffer, UFBXW_ATTRIBUTE_MAPPING_POLYGON_VERTEX);
+
+			{
+				ufbxw_mesh_attribute_desc desc = { 0 };
+				desc.mapping = UFBXW_ATTRIBUTE_MAPPING_POLYGON_VERTEX;
+				desc.values = uv_buffer.id;
+				ufbxw_mesh_set_attribute(scene, mesh, UFBXW_MESH_ATTRIBUTE_UV, 0, &desc);
+			}
+
+			{
+				ufbxw_mesh_attribute_desc desc = { 0 };
+				desc.mapping = UFBXW_ATTRIBUTE_MAPPING_POLYGON_VERTEX;
+				desc.values = color_buffer.id;
+				ufbxw_mesh_set_attribute(scene, mesh, UFBXW_MESH_ATTRIBUTE_COLOR, 0, &desc);
+			}
+
+			{
+				ufbxw_mesh_attribute_desc desc = { 0 };
+				desc.mapping = UFBXW_ATTRIBUTE_MAPPING_POLYGON_VERTEX;
+				desc.values = tangent_buffer.id;
+				ufbxw_mesh_set_attribute(scene, mesh, UFBXW_MESH_ATTRIBUTE_TANGENT, 0, &desc);
+			}
+
+			{
+				ufbxw_mesh_attribute_desc desc = { 0 };
+				desc.mapping = UFBXW_ATTRIBUTE_MAPPING_POLYGON_VERTEX;
+				desc.values = binormal_buffer.id;
+				ufbxw_mesh_set_attribute(scene, mesh, UFBXW_MESH_ATTRIBUTE_BINORMAL, 0, &desc);
+			}
+		}
+
+		ufbxw_free_buffer(scene, index_buffer.id);
+	}
+}
+#endif
+
+UFBXWT_SCENE_CHECK(mesh_attributes)
+#if UFBXWT_IMPL
+{
+	ufbx_vec3 normals[] = {
+		{ 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f },
+		{ 0.0f, 0.0f, 1.0f }, { -1.0f, 0.0f, 0.0f },
+	};
+	ufbx_vec3 tangents[] = {
+		{ 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f },
+		{ 1.0f, 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f },
+	};
+	ufbx_vec3 binormals[] = {
+		{ 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f, 0.0f },
+		{ 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f, -1.0f },
+	};
+	ufbx_vec2 uvs[] = {
+		{ 0.0f, 0.0f }, { 1.0f, 0.0f }, { 0.0f, 1.0f }, { 1.0f, 1.0f },
+	};
+	ufbx_vec4 colors[] = {
+		{ 1.0f, 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f, 0.0f, 0.5f },
+		{ 0.0f, 0.0f, 1.0f, 0.25f }, { 1.0f, 1.0f, 1.0f, 0.0f },
+	};
+	uint32_t indices[] = { 2, 0, 2, 1 };
+
+	ufbxwt_assert(scene->meshes.count == 2);
+	for (int indexed = 0; indexed < 2; indexed++) {
+		ufbx_node *node = ufbx_find_node(scene, indexed ? "Indexed" : "Direct");
+		ufbxwt_assert(node && node->mesh);
+		ufbx_mesh *mesh = node->mesh;
+		ufbxwt_assert(mesh->num_indices == 4);
+		ufbxwt_assert(mesh->vertex_normal.exists);
+		ufbxwt_assert(mesh->vertex_tangent.exists);
+		ufbxwt_assert(mesh->vertex_bitangent.exists);
+		ufbxwt_assert(mesh->vertex_uv.exists);
+		ufbxwt_assert(mesh->vertex_color.exists);
+
+		for (size_t i = 0; i < 4; i++) {
+			uint32_t ix = indexed ? indices[i] : (uint32_t)i;
+			ufbxwt_assert(mesh->vertex_normal.indices.data[i] == ix);
+			ufbxwt_assert(mesh->vertex_tangent.indices.data[i] == ix);
+			ufbxwt_assert(mesh->vertex_bitangent.indices.data[i] == ix);
+			ufbxwt_assert(mesh->vertex_uv.indices.data[i] == ix);
+			ufbxwt_assert(mesh->vertex_color.indices.data[i] == ix);
+			ufbxwt_assert_close_uvec3(err, ufbx_get_vertex_vec3(&mesh->vertex_normal, i), normals[ix]);
+			ufbxwt_assert_close_uvec3(err, ufbx_get_vertex_vec3(&mesh->vertex_tangent, i), tangents[ix]);
+			ufbxwt_assert_close_uvec3(err, ufbx_get_vertex_vec3(&mesh->vertex_bitangent, i), binormals[ix]);
+			ufbxwt_assert_close_uvec2(err, ufbx_get_vertex_vec2(&mesh->vertex_uv, i), uvs[ix]);
+			ufbxwt_assert_close_uvec4(err, ufbx_get_vertex_vec4(&mesh->vertex_color, i), colors[ix]);
+		}
+	}
+}
+#endif

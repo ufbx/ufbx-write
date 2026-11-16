@@ -131,14 +131,13 @@ const char *ufbxwt_ascii_format_name(ufbxwt_ascii_format_impl impl)
 
 bool ufbxwt_ascii_format_supports_float_format(ufbxwt_ascii_format_impl impl, ufbxw_ascii_float_format format)
 {
+	// TODO: This is kind of redundant now, but keeping it in case we have a new formatter that does not support `format`.
 	switch (impl) {
 	case UFBXWT_ASCII_FORMAT_IMPL_DEFAULT: return true;
 	case UFBXWT_ASCII_FORMAT_IMPL_FMTLIB: return true;
 	case UFBXWT_ASCII_FORMAT_IMPL_TO_CHARS: return true;
-
-	case UFBXWT_ASCII_FORMAT_IMPL_ZMIJ:
-	case UFBXWT_ASCII_FORMAT_IMPL_ZMIJ_C:
-		return format == UFBXW_ASCII_FLOAT_FORMAT_ROUND_TRIP;
+	case UFBXWT_ASCII_FORMAT_IMPL_ZMIJ: return true;
+	case UFBXWT_ASCII_FORMAT_IMPL_ZMIJ_C: return true;
 
 	default:
 		ufbxwt_assert(false);

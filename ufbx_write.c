@@ -457,7 +457,7 @@
 
 // -- Version
 
-#define UFBXW_SOURCE_VERSION ufbxw_pack_version(0, 2, 0)
+#define UFBXW_SOURCE_VERSION ufbxw_pack_version(0, 3, 0)
 ufbxw_abi_data_def const uint32_t ufbxw_source_version = UFBXW_SOURCE_VERSION;
 
 ufbxw_static_assert(source_header_version, UFBXW_SOURCE_VERSION/1000U == UFBXW_HEADER_VERSION/1000U);
@@ -8490,11 +8490,11 @@ typedef struct {
 
 static const ufbxwi_mesh_attribute_info ufbxwi_mesh_attribute_infos[] = {
 	{ NULL }, // Invalid
-	{ "LayerElementNormal", "Normals", NULL, 102, 1, UFBXWI_MESH_ATTRIBUTE_TYPE_VEC3 | UFBXWI_MESH_ATTRIBUTE_FLAG_FORBID_INDICES | UFBXWI_MESH_ATTRIBUTE_FLAG_HAS_VALUES_W },
-	{ "LayerElementUV", "UV", "UVIndex", 101, 5, UFBXWI_MESH_ATTRIBUTE_TYPE_VEC2 | UFBXWI_MESH_ATTRIBUTE_FLAG_REQUIRE_INDICES },
-	{ "LayerElementTangent", "Tangents", NULL, 102, 3, UFBXWI_MESH_ATTRIBUTE_TYPE_VEC3 | UFBXWI_MESH_ATTRIBUTE_FLAG_FORBID_INDICES | UFBXWI_MESH_ATTRIBUTE_FLAG_HAS_VALUES_W },
-	{ "LayerElementBinormal", "Binormals", NULL, 102, 2, UFBXWI_MESH_ATTRIBUTE_TYPE_VEC3 | UFBXWI_MESH_ATTRIBUTE_FLAG_FORBID_INDICES | UFBXWI_MESH_ATTRIBUTE_FLAG_HAS_VALUES_W },
-	{ "LayerElementColor", "Colors", "ColorIndex", 101, 4, UFBXWI_MESH_ATTRIBUTE_TYPE_VEC4 | UFBXWI_MESH_ATTRIBUTE_FLAG_REQUIRE_INDICES },
+	{ "LayerElementNormal", "Normals", "NormalsIndex", 102, 1, UFBXWI_MESH_ATTRIBUTE_TYPE_VEC3 | UFBXWI_MESH_ATTRIBUTE_FLAG_HAS_VALUES_W },
+	{ "LayerElementUV", "UV", "UVIndex", 101, 5, UFBXWI_MESH_ATTRIBUTE_TYPE_VEC2 },
+	{ "LayerElementTangent", "Tangents", "TangentsIndex", 102, 3, UFBXWI_MESH_ATTRIBUTE_TYPE_VEC3 | UFBXWI_MESH_ATTRIBUTE_FLAG_HAS_VALUES_W },
+	{ "LayerElementBinormal", "Binormals", "BinormalsIndex", 102, 2, UFBXWI_MESH_ATTRIBUTE_TYPE_VEC3 | UFBXWI_MESH_ATTRIBUTE_FLAG_HAS_VALUES_W },
+	{ "LayerElementColor", "Colors", "ColorIndex", 101, 4, UFBXWI_MESH_ATTRIBUTE_TYPE_VEC4 },
 	{ "LayerElementSmoothing", "Smoothing", "", 102, 6, UFBXWI_MESH_ATTRIBUTE_TYPE_INT | UFBXWI_MESH_ATTRIBUTE_FLAG_FORBID_INDICES },
 	{ "LayerElementMaterial", NULL, "Materials", 101, 7, UFBXWI_MESH_ATTRIBUTE_TYPE_NONE | UFBXWI_MESH_ATTRIBUTE_FLAG_REQUIRE_INDICES },
 };
@@ -9752,7 +9752,7 @@ static ufbxw_string ufbxwi_save_format(ufbxwi_save_context *sc, const char *fmt,
 
 static void ufbxwi_init_save_thread_context(ufbxwi_save_context *sc, ufbxwi_save_thread_context *tc)
 {
-	if (sc->task_queue.enabled) {
+	if (sc->thread_pool.enabled) {
 		tc->ator = &sc->thread_ator;
 		tc->error = &sc->thread_error;
 	} else {
@@ -12558,6 +12558,12 @@ ufbxw_abi void ufbxw_buffer_set_deleter(ufbxw_scene *scene, ufbxw_buffer_id buff
 	ufbxwi_buffer_set_deleter(&scene->buffers, buffer, fn, user);
 }
 
+ufbxw_abi ufbxw_byte_buffer ufbxw_retain_byte_buffer(ufbxw_scene *scene, ufbxw_byte_buffer buffer)
+{
+	ufbxw_retain_buffer(scene, buffer.id);
+	return buffer;
+}
+
 ufbxw_abi ufbxw_byte_buffer ufbxw_create_byte_buffer(ufbxw_scene *scene, size_t count)
 {
 	ufbxw_buffer_id id = ufbxwi_create_owned_buffer(&scene->buffers, UFBXWI_BUFFER_TYPE_BYTE, count);
@@ -12588,6 +12594,12 @@ ufbxw_abi ufbxw_byte_buffer ufbxw_external_byte_stream(ufbxw_scene *scene, ufbxw
 	stream_fn.byte_fn = fn;
 	ufbxw_buffer_id id = ufbxwi_create_stream_buffer(&scene->buffers, UFBXWI_BUFFER_TYPE_BYTE, stream_fn, user, count);
 	return ufbxwi_to_user_byte_buffer(&scene->buffers, id);
+}
+
+ufbxw_abi ufbxw_int_buffer ufbxw_retain_int_buffer(ufbxw_scene *scene, ufbxw_int_buffer buffer)
+{
+	ufbxw_retain_buffer(scene, buffer.id);
+	return buffer;
 }
 
 ufbxw_abi ufbxw_int_buffer ufbxw_create_int_buffer(ufbxw_scene *scene, size_t count)
@@ -12622,6 +12634,12 @@ ufbxw_abi ufbxw_int_buffer ufbxw_external_int_stream(ufbxw_scene *scene, ufbxw_i
 	return ufbxwi_to_user_int_buffer(&scene->buffers, id);
 }
 
+ufbxw_abi ufbxw_long_buffer ufbxw_retain_long_buffer(ufbxw_scene *scene, ufbxw_long_buffer buffer)
+{
+	ufbxw_retain_buffer(scene, buffer.id);
+	return buffer;
+}
+
 ufbxw_abi ufbxw_long_buffer ufbxw_create_long_buffer(ufbxw_scene *scene, size_t count)
 {
 	ufbxw_buffer_id id = ufbxwi_create_owned_buffer(&scene->buffers, UFBXWI_BUFFER_TYPE_LONG, count);
@@ -12652,6 +12670,12 @@ ufbxw_abi ufbxw_long_buffer ufbxw_external_long_stream(ufbxw_scene *scene, ufbxw
 	stream_fn.long_fn = fn;
 	ufbxw_buffer_id id = ufbxwi_create_stream_buffer(&scene->buffers, UFBXWI_BUFFER_TYPE_LONG, stream_fn, user, count);
 	return ufbxwi_to_user_long_buffer(&scene->buffers, id);
+}
+
+ufbxw_abi ufbxw_real_buffer ufbxw_retain_real_buffer(ufbxw_scene *scene, ufbxw_real_buffer buffer)
+{
+	ufbxw_retain_buffer(scene, buffer.id);
+	return buffer;
 }
 
 ufbxw_abi ufbxw_real_buffer ufbxw_create_real_buffer(ufbxw_scene *scene, size_t count)
@@ -12686,6 +12710,12 @@ ufbxw_abi ufbxw_real_buffer ufbxw_external_real_stream(ufbxw_scene *scene, ufbxw
 	return ufbxwi_to_user_real_buffer(&scene->buffers, id);
 }
 
+ufbxw_abi ufbxw_vec2_buffer ufbxw_retain_vec2_buffer(ufbxw_scene *scene, ufbxw_vec2_buffer buffer)
+{
+	ufbxw_retain_buffer(scene, buffer.id);
+	return buffer;
+}
+
 ufbxw_abi ufbxw_vec2_buffer ufbxw_create_vec2_buffer(ufbxw_scene *scene, size_t count)
 {
 	ufbxw_buffer_id id = ufbxwi_create_owned_buffer(&scene->buffers, UFBXWI_BUFFER_TYPE_VEC2, count);
@@ -12716,6 +12746,12 @@ ufbxw_abi ufbxw_vec2_buffer ufbxw_external_vec2_stream(ufbxw_scene *scene, ufbxw
 	stream_fn.vec2_fn = fn;
 	ufbxw_buffer_id id = ufbxwi_create_stream_buffer(&scene->buffers, UFBXWI_BUFFER_TYPE_VEC2, stream_fn, user, count);
 	return ufbxwi_to_user_vec2_buffer(&scene->buffers, id);
+}
+
+ufbxw_abi ufbxw_vec3_buffer ufbxw_retain_vec3_buffer(ufbxw_scene *scene, ufbxw_vec3_buffer buffer)
+{
+	ufbxw_retain_buffer(scene, buffer.id);
+	return buffer;
 }
 
 ufbxw_abi ufbxw_vec3_buffer ufbxw_create_vec3_buffer(ufbxw_scene *scene, size_t count)
@@ -12750,6 +12786,12 @@ ufbxw_abi ufbxw_vec3_buffer ufbxw_external_vec3_stream(ufbxw_scene *scene, ufbxw
 	return ufbxwi_to_user_vec3_buffer(&scene->buffers, id);
 }
 
+ufbxw_abi ufbxw_vec4_buffer ufbxw_retain_vec4_buffer(ufbxw_scene *scene, ufbxw_vec4_buffer buffer)
+{
+	ufbxw_retain_buffer(scene, buffer.id);
+	return buffer;
+}
+
 ufbxw_abi ufbxw_vec4_buffer ufbxw_create_vec4_buffer(ufbxw_scene *scene, size_t count)
 {
 	ufbxw_buffer_id id = ufbxwi_create_owned_buffer(&scene->buffers, UFBXWI_BUFFER_TYPE_VEC4, count);
@@ -12780,6 +12822,12 @@ ufbxw_abi ufbxw_vec4_buffer ufbxw_external_vec4_stream(ufbxw_scene *scene, ufbxw
 	stream_fn.vec4_fn = fn;
 	ufbxw_buffer_id id = ufbxwi_create_stream_buffer(&scene->buffers, UFBXWI_BUFFER_TYPE_VEC4, stream_fn, user, count);
 	return ufbxwi_to_user_vec4_buffer(&scene->buffers, id);
+}
+
+ufbxw_abi ufbxw_float_buffer ufbxw_retain_float_buffer(ufbxw_scene *scene, ufbxw_float_buffer buffer)
+{
+	ufbxw_retain_buffer(scene, buffer.id);
+	return buffer;
 }
 
 ufbxw_abi ufbxw_float_buffer ufbxw_create_float_buffer(ufbxw_scene *scene, size_t count)
@@ -13749,6 +13797,15 @@ ufbxw_abi void ufbxw_mesh_set_normals(ufbxw_scene *scene, ufbxw_mesh mesh, ufbxw
 {
 	ufbxw_mesh_attribute_desc desc = { 0 };
 	desc.values = normals.id;
+	desc.mapping = mapping;
+	ufbxw_mesh_set_attribute(scene, mesh, UFBXW_MESH_ATTRIBUTE_NORMAL, 0, &desc);
+}
+
+ufbxw_abi void ufbxw_mesh_set_normals_indexed(ufbxw_scene *scene, ufbxw_mesh mesh, ufbxw_vec3_buffer normals, ufbxw_int_buffer indices, ufbxw_attribute_mapping mapping)
+{
+	ufbxw_mesh_attribute_desc desc = { 0 };
+	desc.values = normals.id;
+	desc.indices = indices.id;
 	desc.mapping = mapping;
 	ufbxw_mesh_set_attribute(scene, mesh, UFBXW_MESH_ATTRIBUTE_NORMAL, 0, &desc);
 }
