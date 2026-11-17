@@ -14030,7 +14030,7 @@ ufbxw_abi void ufbxw_mesh_set_single_material(ufbxw_scene *scene, ufbxw_mesh mes
 {
 	ufbxw_mesh_attribute_desc desc = { 0 };
 	if (material_index == 0) {
-		desc.indices = ufbxw_external_int_array(scene, (const int32_t*)&ufbxwi_prop_default_data.zero.int32_t, 1).id;
+		desc.indices = ufbxw_external_int_array(scene, (const int32_t*)&ufbxwi_prop_default_data.zero.int32, 1).id;
 	} else {
 		desc.indices = ufbxw_copy_int_array(scene, &material_index, 1).id;
 	}
