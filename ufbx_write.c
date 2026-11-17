@@ -12349,11 +12349,11 @@ static bool ufbxwi_open_file_write(ufbxw_write_stream *stream, const char *path,
 	}
 	wpath[wlen] = 0;
 
-	#if defined(_MSC_VER) && _MSC_VER >= 1400
-		if (_wfopen_s(&f, wpath, L"wb") != 0) f = NULL;
-	#else
-		f = _wfopen(wpath, L"wb");
-	#endif
+#if defined(_MSC_VER) && _MSC_VER >= 1400
+	if (_wfopen_s(&f, wpath, L"wb") != 0) f = NULL;
+#else
+	f = _wfopen(wpath, L"wb");
+#endif
 	if (wpath != wpath_buf) {
 		ufbxw_free(wpath, alloc_size);
 	}
