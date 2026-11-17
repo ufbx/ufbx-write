@@ -5076,7 +5076,7 @@ typedef uint32_t ufbxwi_prop_value;
 
 #define ufbxwi_prop_value_default(m_offset) ufbxwi_make_prop_value(UFBXWI_PROP_VALUE_DEFAULT, (uint32_t)(m_offset))
 #define ufbxwi_prop_value_field(m_offset) ufbxwi_make_prop_value(UFBXWI_PROP_VALUE_FIELD, (uint32_t)(m_offset))
-#define ufbxwi_prop_value_data(m_offset) ufbxwi_make_prop_value(UFBXWI_PROP_VALUE_DATA, (uint32_t)(m_offset));
+#define ufbxwi_prop_value_data(m_offset) ufbxwi_make_prop_value(UFBXWI_PROP_VALUE_DATA, (uint32_t)(m_offset))
 
 typedef struct {
 	ufbxwi_token token;
