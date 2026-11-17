@@ -495,7 +495,10 @@
 // -- Version
 
 #define UFBXW_SOURCE_VERSION ufbxw_pack_version(0, 4, 0)
+
+#ifdef UFBXWI_FEATURE_API
 ufbxw_abi_data_def const uint32_t ufbxw_source_version = UFBXW_SOURCE_VERSION;
+#endif
 
 ufbxw_static_assert(source_header_version, UFBXW_SOURCE_VERSION/1000U == UFBXW_HEADER_VERSION/1000U);
 
