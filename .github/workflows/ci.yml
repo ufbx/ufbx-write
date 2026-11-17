@@ -181,18 +181,47 @@ jobs:
           files: ufbx_write.h ufbx_write.c
           config: ./misc/typos.toml
 
-  ci_cpp:
+  ci_strict_clang:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - name: Create temporary directories
-        run: mkdir -p build
-      - name: Compile as C++
-        run: clang -Werror -g -lm -DUFBX_DEV -DUFBXW_DEV ufbx_write.c misc/test_cpp.cpp -o build/test-cpp
-      - name: Run tests
-        run: build/test-cpp
+      - name: Configure test CMake
+        run: cmake -S test -B build-strict -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSE_STRICT=ON -DUSE_EXTRA=OFF -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+      - name: Compile as strict C
+        run: cmake --build build-strict --config RelWithDebInfo --target ufbxw_strict_c
+      - name: Compile as strict C++
+        if: ${{ !cancelled() }}
+        run: cmake --build build-strict --config RelWithDebInfo --target ufbxw_strict_cpp
+
+  ci_strict_gcc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Configure test CMake
+        run: cmake -S test -B build-strict -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSE_STRICT=ON -DUSE_EXTRA=OFF -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
+      - name: Compile as strict C
+        run: cmake --build build-strict --config RelWithDebInfo --target ufbxw_strict_c
+      - name: Compile as strict C++
+        if: ${{ !cancelled() }}
+        run: cmake --build build-strict --config RelWithDebInfo --target ufbxw_strict_cpp
+
+  ci_strict_msvc:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Configure test CMake
+        run: cmake -S test -B build-strict -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSE_STRICT=ON -DUSE_EXTRA=OFF
+      - name: Compile as strict C
+        run: cmake --build build-strict --config RelWithDebInfo --target ufbxw_strict_c
+      - name: Compile as strict C++
+        if: ${{ !cancelled() }}
+        run: cmake --build build-strict --config RelWithDebInfo --target ufbxw_strict_cpp
 
   ci_formatting:
     runs-on: ubuntu-latest

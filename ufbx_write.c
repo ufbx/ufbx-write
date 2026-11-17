@@ -1,6 +1,10 @@
 #ifndef UFBXW_UFBX_WRITE_C_INCLUDED
 #define UFBXW_UFBX_WRITE_C_INCLUDED
 
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 #if defined(UFBX_HEADER_PATH)
 	#include UFBX_HEADER_PATH
 #else
@@ -22,6 +26,31 @@
 // Disable formatting for this section, as we have a lot of code indented in preprocessor directives
 // ufbxwi_disable_format
 
+#if defined(_MSC_VER)
+	#pragma warning(push)
+	#pragma warning(disable: 4100) // 'name': unreferenced formal parameter
+	#pragma warning(disable: 4201) // nonstandard extension used: nameless struct/union
+	#pragma warning(disable: 4505) // unreferenced local function has been removed
+#endif
+
+#if defined(__clang__)
+	#pragma clang diagnostic push
+	#pragma clang diagnostic ignored "-Wmissing-field-initializers"
+	#pragma clang diagnostic ignored "-Wmissing-braces"
+	#pragma clang diagnostic ignored "-Wcovered-switch-default"
+	#pragma clang diagnostic ignored "-Wunreachable-code-break"
+	#pragma clang diagnostic ignored "-Wunused-parameter"
+	#pragma clang diagnostic ignored "-Wunused-function"
+#endif
+
+#if defined(__GNUC__)
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+	#pragma GCC diagnostic ignored "-Wmissing-braces"
+	#pragma GCC diagnostic ignored "-Wunused-parameter"
+	#pragma GCC diagnostic ignored "-Wunused-function"
+#endif
+
 // -- Malloc
 
 #if defined(ufbxw_malloc) || defined(ufbxw_realloc) || defined(ufbxw_free)
@@ -36,6 +65,14 @@
 #endif
 
 // -- Platform
+
+#if defined(__GNUC__)
+	#define UFBXWI_GNUC __GNUC__
+	#define UFBXWI_GNUC_VERSION ufbx_pack_version(__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__)
+#else
+	#define UFBXWI_GNUC 0
+	#define UFBXWI_GNUC_VERSION 0
+#endif
 
 #if !defined(UFBXW_STANDARD_C) && defined(_MSC_VER)
 	#define ufbxwi_noinline __declspec(noinline)
@@ -457,8 +494,11 @@
 
 // -- Version
 
-#define UFBXW_SOURCE_VERSION ufbxw_pack_version(0, 3, 0)
+#define UFBXW_SOURCE_VERSION ufbxw_pack_version(0, 4, 0)
+
+#ifdef UFBXWI_FEATURE_API
 ufbxw_abi_data_def const uint32_t ufbxw_source_version = UFBXW_SOURCE_VERSION;
+#endif
 
 ufbxw_static_assert(source_header_version, UFBXW_SOURCE_VERSION/1000U == UFBXW_HEADER_VERSION/1000U);
 
@@ -656,12 +696,12 @@ typedef uint32_t ufbxwi_task_id;
 	static ufbxwi_forceinline bool ufbxwi_atomic_cas(ufbxwi_atomic_u32 *atomic, uint32_t expected, uint32_t value)
 	{
 		long ref = _InterlockedCompareExchange((volatile long*)&atomic->value, (long)value, (long)expected);
-		return ref == expected;
+		return (uint32_t)ref == expected;
 	}
 
 	static ufbxwi_forceinline uint32_t ufbxwi_atomic_add(ufbxwi_atomic_u32 *atomic, uint32_t value)
 	{
-		return _InterlockedExchangeAdd((volatile long*)&atomic->value, (long)value);
+		return (uint32_t)_InterlockedExchangeAdd((volatile long*)&atomic->value, (long)value);
 	}
 
 	static ufbxwi_forceinline uint32_t ufbxwi_atomic_load_relaxed(ufbxwi_atomic_u32 *atomic)
@@ -696,6 +736,7 @@ static ufbxwi_forceinline void ufbxwi_atomic_store(ufbxwi_atomic_u32 *atomic, ui
 {
 	uint32_t prev = ufbxwi_atomic_load_relaxed(atomic);
 	bool ok = ufbxwi_atomic_cas(atomic, prev, value);
+	ufbxwi_ignore(ok);
 	ufbxw_assert(ok);
 }
 
@@ -768,7 +809,7 @@ static bool ufbxwi_mutex_try_lock(ufbxwi_thread_pool *tp, ufbxwi_mutex *mutex)
 	// Happy fast path
 	if (ufbxwi_atomic_cas(&mutex->lockers, 0, 1)) return true;
 
-	for (uint32_t spin = 0; ; spin++) {
+	for (;;) {
 		const uint32_t state = ufbxwi_atomic_load_relaxed(&mutex->lockers);
 		const uint32_t locked = state & 0x1;
 		const uint32_t waiters = state >> 1u;
@@ -829,6 +870,7 @@ static void ufbxwi_mutex_unlock(ufbxwi_thread_pool *tp, ufbxwi_mutex *mutex)
 		const uint32_t locked = state & 0x1;
 		const uint32_t waiters = state >> 1u;
 
+		ufbxwi_ignore(locked);
 		ufbxwi_dev_assert(locked);
 
 		const uint32_t new_state = 0x0 | waiters << 1u;
@@ -1446,7 +1488,7 @@ static ufbxwi_forceinline void ufbxwi_list_free_size(ufbxwi_allocator *ator, voi
 #define ufbxwi_list_push_zero_n(ator, list, type, n) ufbxwi_maybe_null((ufbxwi_check_ptr_type(type, (list)->data), (type*)ufbxwi_list_push_zero_size((ator), (list), sizeof(type), (n))))
 #define ufbxwi_list_push_copy(ator, list, type, src) ufbxwi_maybe_null((ufbxwi_check_ptr_type(type, (list)->data), ufbxwi_check_ptr_type(type, src), (type*)ufbxwi_list_push_copy_size((ator), (list), sizeof(type), 1, (src))))
 #define ufbxwi_list_push_copy_n(ator, list, type, n, src) ufbxwi_maybe_null((ufbxwi_check_ptr_type(type, (list)->data), ufbxwi_check_ptr_type(type, src), (type*)ufbxwi_list_push_copy_size((ator), (list), sizeof(type), (n), (src))))
-#define ufbxwi_list_resize_uninit(ator, list, type, n) (ufbxwi_check_ptr_type(type, (list)->data), (type*)ufbxwi_list_resize_size((ator), (list), sizeof(type), (n)))
+#define ufbxwi_list_resize_uninit(ator, list, type, n) (ufbxwi_check_ptr_type(type, (list)->data), ufbxwi_list_resize_size((ator), (list), sizeof(type), (n)))
 #define ufbxwi_list_free(ator, list) ufbxwi_list_free_size((ator), (list), sizeof(*(list)->data))
 
 
@@ -1510,7 +1552,7 @@ static ufbxw_string ufbxwi_vformat(ufbxwi_allocator *ator, ufbxwi_byte_list *buf
 				ufbxwi_check(ufbxwi_list_push_copy_n(ator, buf, char, len, str), ufbxwi_empty_string);
 			} break;
 			case 'S': {
-				ufbxw_string str = va_arg(args, ufbxw_string);
+				ufbxw_string str = *va_arg(args, const ufbxw_string*);
 				ufbxwi_check(ufbxwi_list_push_copy_n(ator, buf, char, str.length, str.data), ufbxwi_empty_string);
 			} break;
 			case '0': {
@@ -1518,6 +1560,7 @@ static ufbxw_string ufbxwi_vformat(ufbxwi_allocator *ator, ufbxwi_byte_list *buf
 				ufbxwi_check(dst, ufbxwi_empty_string);
 				*dst = '\0';
 			} break;
+			default: ufbxwi_unreachable("bad format specifier"); break;
 			}
 		} else {
 			if (buf->count == buf->capacity) {
@@ -1619,7 +1662,7 @@ static ufbxwi_noinline void ufbxwi_sort_huff_symbols(ufbxwi_huff_node *nodes, si
 	}
 }
 
-void ufbxwi_build_huffman(ufbxwi_huff_symbol *symbols, const uint16_t *counts, uint32_t num_symbols, uint32_t max_bits)
+static void ufbxwi_build_huffman(ufbxwi_huff_symbol *symbols, const uint16_t *counts, uint32_t num_symbols, uint32_t max_bits)
 {
 	ufbxwi_huff_node nodes[1024];
 
@@ -1669,7 +1712,7 @@ void ufbxwi_build_huffman(ufbxwi_huff_symbol *symbols, const uint16_t *counts, u
 
 		for (uint32_t i = 0; i < num_symbols; i++) {
 			uint32_t len = symbols[i].length;
-			symbols[i].bits = len ? ufbxwi_bit_reverse(length_codes[len]++, len) : 0;
+			symbols[i].bits = (uint16_t)(len ? ufbxwi_bit_reverse(length_codes[len]++, len) : 0);
 		}
 
 		break;
@@ -1679,8 +1722,8 @@ void ufbxwi_build_huffman(ufbxwi_huff_symbol *symbols, const uint16_t *counts, u
 static ufbxwi_noinline void ufbxwi_build_static_huffman(ufbxwi_huff_symbol *huff, uint32_t count, uint32_t bits, uint32_t code_begin)
 {
 	ufbxwi_nounroll for (uint32_t i = 0; i < count; i++) {
-		huff[i].length = bits;
-		huff[i].bits = ufbxwi_bit_reverse(code_begin + i, bits);
+		huff[i].length = (uint16_t)bits;
+		huff[i].bits = (uint16_t)ufbxwi_bit_reverse(code_begin + i, bits);
 	}
 }
 
@@ -1825,7 +1868,7 @@ static ufbxwi_noinline void ufbxwi_deflate_encoder_reset_imp(ufbxwi_deflate_enco
 
 	// TODO: Vectorize
 	for (size_t i = 0; i < (1 << UFBXWI_DEFLATE_HASH3_BITS); i++) {
-		ud->hash3_tab[i] = -0x10000;
+		ud->hash3_tab[i] = (uint32_t)-0x10000;
 	}
 	for (size_t i = 0; i < (1 << UFBXWI_DEFLATE_HASH4_BITS); i++) {
 		ud->hash4_tab[i] = -0x10000;
@@ -1869,7 +1912,7 @@ static ufbxwi_forceinline uint32_t ufbxwi_deflate_length_symbol(int32_t length)
 
 static ufbxwi_forceinline uint32_t ufbxwi_deflate_dist_symbol(int32_t distance)
 {
-	uint32_t v = distance - 1;
+	uint32_t v = (uint32_t)(distance - 1);
 	if (v < 2) return v;
 
 	uint32_t log_v = 31 - 1 - ufbxwi_lzcnt32((uint32_t)v);
@@ -1881,17 +1924,17 @@ static ufbxwi_forceinline uint32_t ufbxwi_deflate_push_match(ufbxwi_deflate_enco
 	const uint32_t match_index = ud->num_matches++;
 	ufbxwi_lz_match *match = &ud->matches[match_index];
 	match->literal_count = (uint16_t)(pos - ud->prev_match_end_pos);
-	ud->prev_match_end_pos = pos + length;
+	ud->prev_match_end_pos = pos + (ufbxwi_lz_pos)length;
 
 	const int32_t distance = (int32_t)(pos - match_pos);
-	const uint32_t length_sym = ufbxwi_deflate_length_symbol(length);
+	const uint32_t length_sym = ufbxwi_deflate_length_symbol((int32_t)length);
 	const uint32_t dist_sym = ufbxwi_deflate_dist_symbol(distance);
 
 	ud->litlen_count[length_sym + 256]++;
 	ud->dist_count[dist_sym]++;
 
 	match->length = (uint16_t)length;
-	match->dist = (int16_t)distance;
+	match->dist = (uint16_t)distance;
 	match->length_sym = (uint8_t)length_sym;
 	match->dist_sym = (uint8_t)dist_sym;
 	return match_index;
@@ -1953,11 +1996,11 @@ static ufbxwi_noinline void ufbxwi_find_matches_slow(ufbxwi_deflate_encoder *ud,
 		ufbxwi_lz_pos match3_pos = (ufbxwi_lz_pos)ud->hash3_tab[hash3];
 
 		ufbxwi_lz_pos match_pos = (ufbxwi_lz_pos)ud->hash4_tab[hash4];
-		ud->hash3_tab[hash3] = (int32_t)read_pos;
+		ud->hash3_tab[hash3] = (uint32_t)read_pos;
 		ud->hash4_tab[hash4] = (int32_t)read_pos;
-		ud->hash4_chain[read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
+		ud->hash4_chain[(uint32_t)read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
 
-		ufbxwi_lz_pos next_pos = match_pos - ud->hash4_chain[match_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)];
+		ufbxwi_lz_pos next_pos = match_pos - ud->hash4_chain[(uint32_t)match_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)];
 
 		const ufbxwi_lz_pos match_limit = read_pos - 0x8000;
 
@@ -1986,7 +2029,7 @@ static ufbxwi_noinline void ufbxwi_find_matches_slow(ufbxwi_deflate_encoder *ud,
 					break;
 				}
 
-				next_pos = next_pos - ud->hash4_chain[next_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)];
+				next_pos = next_pos - ud->hash4_chain[(uint32_t)next_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)];
 
 				const char *data_match = data + match_pos;
 
@@ -2005,18 +2048,18 @@ static ufbxwi_noinline void ufbxwi_find_matches_slow(ufbxwi_deflate_encoder *ud,
 			}
 
 			if (best_len >= 4) {
-				const uint32_t match_index = ufbxwi_deflate_push_match(ud, read_pos, best_pos, best_len);
+				const uint32_t match_index = ufbxwi_deflate_push_match(ud, read_pos, best_pos, (uint32_t)best_len);
 
 				const ufbxwi_lz_pos match_end_pos = read_pos + best_len;
 
 				read_pos++;
 				while (read_pos < match_end_pos) {
-					const uint32_t hash3 = ufbxwi_deflate_hash3_slow(data + read_pos, data_end, UFBXWI_DEFLATE_HASH3_BITS);
-					const uint32_t hash4 = ufbxwi_deflate_hash4_slow(data + read_pos, data_end, UFBXWI_DEFLATE_HASH4_BITS);
-					match_pos = (ufbxwi_lz_pos)ud->hash4_tab[hash4];
-					ud->hash3_tab[hash3] = (int32_t)read_pos;
-					ud->hash4_tab[hash4] = (int32_t)read_pos;
-					ud->hash4_chain[read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
+					const uint32_t match_hash3 = ufbxwi_deflate_hash3_slow(data + read_pos, data_end, UFBXWI_DEFLATE_HASH3_BITS);
+					const uint32_t match_hash4 = ufbxwi_deflate_hash4_slow(data + read_pos, data_end, UFBXWI_DEFLATE_HASH4_BITS);
+					match_pos = (ufbxwi_lz_pos)ud->hash4_tab[match_hash4];
+					ud->hash3_tab[match_hash3] = (uint32_t)read_pos;
+					ud->hash4_tab[match_hash4] = (int32_t)read_pos;
+					ud->hash4_chain[(uint32_t)read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
 					read_pos++;
 				}
 
@@ -2032,16 +2075,14 @@ static ufbxwi_noinline void ufbxwi_find_matches_slow(ufbxwi_deflate_encoder *ud,
 			if (data[match3_pos + 0] == data[read_pos + 0] && data[match3_pos + 1] == data[read_pos + 1] && data[match3_pos + 2] == data[read_pos + 2]) {
 				const uint32_t match_index = ufbxwi_deflate_push_match(ud, read_pos, match3_pos, 3);
 
-				ufbxwi_lz_pos match_end_pos = read_pos + 3;
-
 				read_pos++;
 				for (size_t i = 0; i < 2; i++) {
-					const uint32_t hash3 = ufbxwi_deflate_hash3_slow(data + read_pos, data_end, UFBXWI_DEFLATE_HASH3_BITS);
-					const uint32_t hash4 = ufbxwi_deflate_hash4_slow(data + read_pos, data_end, UFBXWI_DEFLATE_HASH4_BITS);
-					match_pos = (ufbxwi_lz_pos)ud->hash4_tab[hash4];
-					ud->hash3_tab[hash3] = (int32_t)read_pos;
-					ud->hash4_tab[hash4] = (int32_t)read_pos;
-					ud->hash4_chain[read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
+					const uint32_t match_hash3 = ufbxwi_deflate_hash3_slow(data + read_pos, data_end, UFBXWI_DEFLATE_HASH3_BITS);
+					const uint32_t match_hash4 = ufbxwi_deflate_hash4_slow(data + read_pos, data_end, UFBXWI_DEFLATE_HASH4_BITS);
+					match_pos = (ufbxwi_lz_pos)ud->hash4_tab[match_hash4];
+					ud->hash3_tab[match_hash3] = (uint32_t)read_pos;
+					ud->hash4_tab[match_hash4] = (int32_t)read_pos;
+					ud->hash4_chain[(uint32_t)read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
 					read_pos++;
 				}
 
@@ -2080,14 +2121,14 @@ static ufbxwi_forceinline int32_t ufbxwi_lz_match_length_fast(const char *data, 
 	do {
 		delta = ufbxwi_lz_word_read(data + len) ^ ufbxwi_lz_word_read(match + len);
 		if (delta != 0) break;
-		len += sizeof(ufbxwi_lz_word);
+		len += (int32_t)sizeof(ufbxwi_lz_word);
 
 		delta = ufbxwi_lz_word_read(data + len) ^ ufbxwi_lz_word_read(match + len);
 		if (delta != 0) break;
-		len += sizeof(ufbxwi_lz_word);
+		len += (int32_t)sizeof(ufbxwi_lz_word);
 	} while (len < max_len);
 
-	len += ufbxwi_lz_word_low_zero_bytes(delta);
+	len += (int32_t)ufbxwi_lz_word_low_zero_bytes(delta);
 	return len < max_len ? len : max_len;
 }
 
@@ -2110,11 +2151,11 @@ static ufbxwi_noinline void ufbxwi_find_matches_fast(ufbxwi_deflate_encoder *ud,
 		next_hash4 = ufbxwi_deflate_hash4_fast(data + read_pos + 1, UFBXWI_DEFLATE_HASH4_BITS);
 		next_match_pos = (ufbxwi_lz_pos)ud->hash4_tab[next_hash4];
 
-		ud->hash3_tab[hash3] = (int32_t)read_pos;
+		ud->hash3_tab[hash3] = (uint32_t)read_pos;
 		ud->hash4_tab[hash4] = (int32_t)read_pos;
-		ud->hash4_chain[read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
+		ud->hash4_chain[(uint32_t)read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
 
-		ufbxwi_lz_pos next_pos = match_pos - ud->hash4_chain[match_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)];
+		ufbxwi_lz_pos next_pos = match_pos - ud->hash4_chain[(uint32_t)match_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)];
 
 		const ufbxwi_lz_pos match_limit = read_pos - 0x8000;
 
@@ -2124,7 +2165,7 @@ static ufbxwi_noinline void ufbxwi_find_matches_fast(ufbxwi_deflate_encoder *ud,
 		const char *data_read = data + read_pos;
 
 		if (match_pos >= match_limit) {
-			uint32_t scan_left = ud->max_scan;
+			uint32_t scan_left = (uint32_t)ud->max_scan;
 
 			best_len = ufbxwi_lz_match_length_fast(data + match_pos, data_read, 258);
 			best_pos = match_pos;
@@ -2139,7 +2180,7 @@ static ufbxwi_noinline void ufbxwi_find_matches_fast(ufbxwi_deflate_encoder *ud,
 					break;
 				}
 
-				next_pos = next_pos - ud->hash4_chain[next_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)];
+				next_pos = next_pos - ud->hash4_chain[(uint32_t)next_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)];
 
 				const char *data_match = data + match_pos;
 
@@ -2158,24 +2199,24 @@ static ufbxwi_noinline void ufbxwi_find_matches_fast(ufbxwi_deflate_encoder *ud,
 			}
 
 			if (best_len >= 4) {
-				const uint32_t match_index = ufbxwi_deflate_push_match(ud, read_pos, best_pos, best_len);
+				const uint32_t match_index = ufbxwi_deflate_push_match(ud, read_pos, best_pos, (uint32_t)best_len);
 
 				ufbxwi_lz_pos match_end_pos = read_pos + best_len;
 
 				read_pos++;
 				while (read_pos < match_end_pos) {
 
-					const uint32_t hash3 = next_hash3;
-					const uint32_t hash4 = next_hash4;
+					const uint32_t match_hash3 = next_hash3;
+					const uint32_t match_hash4 = next_hash4;
 					match_pos = next_match_pos;
 
 					next_hash3 = ufbxwi_deflate_hash3_fast(data + read_pos + 1, UFBXWI_DEFLATE_HASH3_BITS);
 					next_hash4 = ufbxwi_deflate_hash4_fast(data + read_pos + 1, UFBXWI_DEFLATE_HASH4_BITS);
 					next_match_pos = (ufbxwi_lz_pos)ud->hash4_tab[next_hash4];
 
-					ud->hash3_tab[hash3] = (int32_t)read_pos;
-					ud->hash4_tab[hash4] = (int32_t)read_pos;
-					ud->hash4_chain[read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
+					ud->hash3_tab[match_hash3] = (uint32_t)read_pos;
+					ud->hash4_tab[match_hash4] = (int32_t)read_pos;
+					ud->hash4_chain[(uint32_t)read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
 
 					read_pos++;
 				}
@@ -2192,21 +2233,19 @@ static ufbxwi_noinline void ufbxwi_find_matches_fast(ufbxwi_deflate_encoder *ud,
 			if (((ufbxwi_read_u32(data + match3_pos) ^ ufbxwi_read_u32(data + read_pos)) & 0xffffff) == 0) {
 				const uint32_t match_index = ufbxwi_deflate_push_match(ud, read_pos, match3_pos, 3);
 
-				ufbxwi_lz_pos match_end_pos = read_pos + 3;
-
 				read_pos++;
 				for (size_t i = 0; i < 2; i++) {
-					const uint32_t hash3 = next_hash3;
-					const uint32_t hash4 = next_hash4;
+					const uint32_t match_hash3 = next_hash3;
+					const uint32_t match_hash4 = next_hash4;
 					match_pos = next_match_pos;
 
 					next_hash3 = ufbxwi_deflate_hash3_fast(data + read_pos + 1, UFBXWI_DEFLATE_HASH3_BITS);
 					next_hash4 = ufbxwi_deflate_hash4_fast(data + read_pos + 1, UFBXWI_DEFLATE_HASH4_BITS);
 					next_match_pos = (ufbxwi_lz_pos)ud->hash4_tab[next_hash4];
 
-					ud->hash3_tab[hash3] = (int32_t)read_pos;
-					ud->hash4_tab[hash4] = (int32_t)read_pos;
-					ud->hash4_chain[read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
+					ud->hash3_tab[match_hash3] = (uint32_t)read_pos;
+					ud->hash4_tab[match_hash4] = (int32_t)read_pos;
+					ud->hash4_chain[(uint32_t)read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
 					read_pos++;
 				}
 
@@ -2393,8 +2432,8 @@ static ufbxwi_noinline void ufbxwi_deflate_flush_matches(ufbxwi_deflate_encoder 
 		if (match.length_sym > 0) {
 			const uint32_t len_extra_bits = len_info & 0xf, len_extra_base = len_info >> 4;
 			const uint32_t dist_extra_bits = dist_info & 0xf, dist_extra_base = dist_info >> 4;
-			const uint32_t len_extra = (match.length - len_extra_base) & ((1 << len_extra_bits) - 1);
-			const uint32_t dist_extra = (match.dist - dist_extra_base) & ((1 << dist_extra_bits) - 1);
+			const uint32_t len_extra = (match.length - len_extra_base) & (uint32_t)((1 << len_extra_bits) - 1);
+			const uint32_t dist_extra = (match.dist - dist_extra_base) & (uint32_t)((1 << dist_extra_bits) - 1);
 
 			ufbxwi_deflate_push_sym(bits, num_bits, huff_litlen[match.length_sym + 256]);
 			ufbxwi_deflate_push_bits(bits, num_bits, len_extra, len_extra_bits);
@@ -2475,7 +2514,7 @@ static ufbxwi_noinline void ufbxwi_deflate_flush_uncompressed(ufbxwi_deflate_enc
 		dst += num_bytes;
 
 		ud->dst_data = dst;
-		ud->encode_pos += num_bytes;
+		ud->encode_pos += (ufbxwi_lz_pos)num_bytes;
 	}
 }
 
@@ -2817,8 +2856,8 @@ static ufbxwi_noinline ufbxw_deflate_advance_result ufbxwi_deflate_encoder_advan
 
 	const ufbxwi_lz_pos begin_pos = ud->read_pos;
 	while (ud->read_pos != ud->end_pos) {
-		const size_t dst_size = ufbxwi_deflate_encoder_dst_size((size_t)(ud->end_pos - ud->read_pos));
-		if (ufbxwi_to_size(ud->dst_end - ud->dst_data) < dst_size) {
+		const size_t required_size = ufbxwi_deflate_encoder_dst_size((size_t)(ud->end_pos - ud->read_pos));
+		if (ufbxwi_to_size(ud->dst_end - ud->dst_data) < required_size) {
 			break;
 		}
 
@@ -2860,6 +2899,7 @@ static ufbxwi_unused ufbxwi_noinline size_t ufbxwi_deflate(ufbxwi_deflate_encode
 
 	ufbxw_deflate_advance_status status = { 0 };
 	ufbxw_deflate_advance_result result = ufbxwi_deflate_encoder_advance(ud, &status, dst, dst_size, src, src_size);
+	ufbxwi_ignore(result);
 	ufbxw_assert(result == UFBXW_DEFLATE_ADVANCE_RESULT_COMPLETED);
 	return status.bytes_written;
 }
@@ -2976,8 +3016,8 @@ static bool ufbxwi_task_complete(ufbxwi_task_queue *tq, ufbxwi_task_id task_id, 
 {
 	ufbxwi_dev_assert(tq->enabled);
 
-	const uint32_t slot_ix = task_id % tq->num_slots;
-	const uint32_t generation = task_id / tq->num_slots;
+	const uint32_t slot_ix = (uint32_t)(task_id % tq->num_slots);
+	const uint32_t generation = (uint32_t)(task_id / tq->num_slots);
 	ufbxwi_task_slot *slot = &tq->slots[slot_ix];
 
 	if (ufbxwi_atomic_load_acquire(&slot->generation) > generation) {
@@ -3014,8 +3054,8 @@ static bool ufbxwi_task_get_completed(ufbxwi_task_queue *tq, ufbxwi_task_id task
 {
 	ufbxwi_dev_assert(tq->enabled);
 
-	const uint32_t slot_ix = task_id % tq->num_slots;
-	const uint32_t generation = task_id / tq->num_slots;
+	const uint32_t slot_ix = (uint32_t)(task_id % tq->num_slots);
+	const uint32_t generation = (uint32_t)(task_id / tq->num_slots);
 	ufbxwi_task_slot *slot = &tq->slots[slot_ix];
 	return ufbxwi_atomic_load_acquire(&slot->generation) > generation;
 }
@@ -3109,10 +3149,10 @@ static ufbxwi_task_id ufbxwi_task_push(ufbxwi_task_queue *tq, ufbxwi_task_fn *fn
 
 	// Wait until the previous task in this slot is completed.
 	if (task_id >= tq->num_slots) {
-		ufbxwi_task_complete(tq, task_id - tq->num_slots, context, true);
+		ufbxwi_task_complete(tq, (ufbxwi_task_id)(task_id - tq->num_slots), context, true);
 	}
 
-	const uint32_t slot_ix = task_id % tq->num_slots;
+	const uint32_t slot_ix = (uint32_t)(task_id % tq->num_slots);
 	ufbxwi_task_slot *slot = &tq->slots[slot_ix];
 	slot->task.fn = fn;
 	slot->task.user = user;
@@ -3134,7 +3174,7 @@ static void ufbxwi_task_queue_free(ufbxwi_task_queue *tq, void *context)
 	// Wait that all tasks are completed
 	// TODO: This could be optimized
 	// TODO: We might not even need to do this
-	uint32_t task_start = tq->write_index >= tq->num_slots ? tq->write_index - tq->num_slots : 0;
+	uint32_t task_start = (uint32_t)(tq->write_index >= tq->num_slots ? tq->write_index - tq->num_slots : 0);
 	if (task_start == 0) {
 		task_start = 1;
 	}
@@ -3195,243 +3235,6 @@ static ufbxwi_noinline uint32_t ufbxwi_hash_string(const char *str, size_t lengt
 // -- String
 
 #ifdef UFBXWI_FEATURE_STRING_POOL
-
-typedef struct ufbxwi_string_entry {
-	uint32_t hash;
-	uint32_t length;
-	uint32_t token;
-	const char *data;
-} ufbxwi_string_entry;
-
-UFBXWI_LIST_TYPE(ufbxw_string_list, ufbxw_string);
-
-typedef struct ufbxwi_string_pool {
-	ufbxwi_allocator *ator;
-	ufbxwi_error *error;
-	bool failed;
-
-	ufbxwi_string_entry *entries;
-	uint32_t entry_count;
-	uint32_t entry_capacity;
-
-	ufbxw_string_list tokens;
-
-	char *block_pos;
-	char *block_end;
-} ufbxwi_string_pool;
-
-static void ufbxwi_mark_string_pool_failed(ufbxwi_string_pool *pool)
-{
-	pool->tokens.data = NULL;
-	pool->tokens.count = 0;
-	pool->tokens.capacity = 0;
-	pool->entries = NULL;
-	pool->entry_count = 0;
-	pool->entry_capacity = 0;
-}
-
-bool ufbxwi_string_pool_rehash(ufbxwi_string_pool *pool)
-{
-	size_t capacity = ufbxwi_max_sz(pool->entry_capacity * 2, 512);
-	ufbxwi_string_entry *new_entries = ufbxwi_alloc(pool->ator, ufbxwi_string_entry, capacity);
-	ufbxwi_check(new_entries, false);
-
-	memset(new_entries, 0, capacity * sizeof(ufbxwi_string_entry));
-	ufbxwi_for(ufbxwi_string_entry, entry, pool->entries, pool->entry_capacity) {
-		// TODO: Better hashing
-		uint32_t index = entry->hash;
-		for (;;) {
-			uint32_t slot = index & (capacity - 1);
-			if (new_entries[slot].hash == 0) {
-				new_entries[slot] = *entry;
-				break;
-			}
-			index++;
-		}
-	}
-
-	ufbxwi_free(pool->ator, pool->entries);
-
-	pool->entries = new_entries;
-	pool->entry_capacity = (uint32_t)capacity;
-	return true;
-}
-
-static char *ufbxwi_copy_string(ufbxwi_string_pool *pool, const char *str, size_t length)
-{
-	char *copy = NULL;
-	if (length >= 256) {
-		copy = ufbxwi_alloc(pool->ator, char, length + 1);
-		ufbxwi_check(copy, NULL);
-	} else {
-		if (ufbxwi_to_size(pool->block_end - pool->block_pos) < length + 1) {
-			const size_t block_size = 4096;
-			char *block = ufbxwi_alloc(pool->ator, char, block_size);
-			ufbxwi_check(block, NULL);
-
-			pool->block_pos = block;
-			pool->block_end = block + block_size;
-		}
-
-		copy = pool->block_pos;
-		pool->block_pos = copy + (length + 1);
-	}
-
-	ufbxw_assert(copy);
-	memcpy(copy, str, length);
-	copy[length] = '\0';
-
-	return copy;
-}
-
-static bool ufbxwi_intern_string(ufbxwi_string_pool *pool, ufbxw_string *dst, const char *str, size_t length)
-{
-	if (length == 0) {
-		dst->data = ufbxwi_empty_char;
-		dst->length = 0;
-		return true;
-	} else if (length == SIZE_MAX) {
-		length = strlen(str);
-	}
-
-	size_t max_length = UINT32_MAX / 2;
-	if (length > max_length) {
-		ufbxwi_failf(pool->error, UFBXW_ERROR_STRING_TOO_LONG, "String is too long (%zu bytes, max %zu bytes)", length, max_length);
-		return false;
-	}
-
-	uint32_t hash = ufbxwi_hash_string(str, length);
-
-	if (pool->entry_count * 2 >= pool->entry_capacity) {
-		ufbxwi_check(ufbxwi_string_pool_rehash(pool), false);
-	}
-
-	uint32_t capacity = pool->entry_capacity;
-	ufbxwi_string_entry *entries = pool->entries;
-
-	uint32_t index = hash;
-	for (;;) {
-		uint32_t slot = index & (capacity - 1);
-		if (entries[slot].hash == hash && entries[slot].length == length && !memcmp(entries[slot].data, str, length)) {
-			dst->data = entries[slot].data;
-			dst->length = length;
-			return true;
-		} else if (entries[slot].hash == 0) {
-			break;
-		}
-		index++;
-	}
-
-	char *copy = ufbxwi_copy_string(pool, str, length);
-	ufbxwi_check(copy, false);
-
-	pool->entry_count++;
-
-	ufbxwi_string_entry *entry = &entries[index & (capacity - 1)];
-	entry->data = copy;
-	entry->hash = hash;
-	entry->token = 0;
-	entry->length = (uint32_t)length;
-
-	dst->data = copy;
-	dst->length = length;
-	return true;
-}
-
-static uint32_t ufbxwi_intern_token(ufbxwi_string_pool *pool, const char *str, size_t length)
-{
-	if (length == 0) return 1; // UFBXWI_TOKEN_EMPTY
-
-	size_t max_length = UINT32_MAX / 2;
-	if (length > max_length) {
-		ufbxwi_failf(pool->error, UFBXW_ERROR_STRING_TOO_LONG, "String is too long (%zu bytes, max %zu bytes)", length, max_length);
-		return false;
-	}
-
-	uint32_t hash = ufbxwi_hash_string(str, length);
-
-	if (pool->entry_count * 2 >= pool->entry_capacity) {
-		ufbxwi_check(ufbxwi_string_pool_rehash(pool), 0);
-	}
-
-	uint32_t capacity = pool->entry_capacity;
-	ufbxwi_string_entry *entries = pool->entries;
-
-	uint32_t index = hash;
-	for (;;) {
-		uint32_t slot = index & (capacity - 1);
-		if (entries[slot].hash == hash && entries[slot].length == length && !memcmp(entries[slot].data, str, length)) {
-			if (entries[slot].token > 0) {
-				return entries[slot].token;
-			} else {
-				uint32_t token = (uint32_t)pool->tokens.count;
-				ufbxw_string *dst = ufbxwi_list_push_uninit(pool->ator, &pool->tokens, ufbxw_string);
-				ufbxwi_check(dst, 0);
-				dst->data = entries[slot].data;
-				dst->length = length;
-				entries[slot].token = token;
-				return token;
-			}
-		} else if (entries[slot].hash == 0) {
-			break;
-		}
-		index++;
-	}
-
-	char *copy = ufbxwi_copy_string(pool, str, length);
-	ufbxwi_check(copy, 0);
-
-	pool->entry_count++;
-
-	uint32_t token = (uint32_t)pool->tokens.count;
-	ufbxw_string *dst = ufbxwi_list_push_uninit(pool->ator, &pool->tokens, ufbxw_string);
-	ufbxwi_check(dst, 0);
-	dst->data = copy;
-	dst->length = length;
-
-	ufbxwi_string_entry *entry = &entries[index & (capacity - 1)];
-	entry->data = copy;
-	entry->hash = hash;
-	entry->token = token;
-	entry->length = (uint32_t)length;
-	return token;
-}
-
-static uint32_t ufbxwi_get_token(const ufbxwi_string_pool *pool, const char *str, size_t length)
-{
-	if (length == 0) return 1; // UFBXWI_TOKEN_EMPTY
-	if (length > UINT32_MAX / 2) return 0;
-	if (pool->entry_count == 0) return 0;
-
-	uint32_t hash = ufbxwi_hash_string(str, length);
-	uint32_t capacity = pool->entry_capacity;
-	const ufbxwi_string_entry *entries = pool->entries;
-
-	uint32_t index = hash;
-	for (;;) {
-		uint32_t slot = index & (capacity - 1);
-		if (entries[slot].hash == hash && entries[slot].length == length && !memcmp(entries[slot].data, str, length)) {
-			return entries[slot].token;
-		} else if (entries[slot].hash == 0) {
-			return 0;
-		}
-		index++;
-	}
-}
-
-static bool ufbxwi_intern_string_str(ufbxwi_string_pool *pool, ufbxw_string *dst, ufbxw_string str)
-{
-	return ufbxwi_intern_string(pool, dst, str.data, str.length);
-}
-
-static bool ufbxwi_intern_string_str_or_default(ufbxwi_string_pool *pool, ufbxw_string *dst, ufbxw_string str, ufbxw_string default_str)
-{
-	if (str.length > 0) {
-		return ufbxwi_intern_string(pool, dst, str.data, str.length);
-	} else {
-		return ufbxwi_intern_string(pool, dst, default_str.data, default_str.length);
-	}
-}
 
 typedef enum ufbxwi_token {
 	UFBXWI_TOKEN_NONE,
@@ -4249,7 +4052,244 @@ static const ufbxw_string ufbxwi_tokens[] = {
 // Not including none
 ufbxw_static_assert(ufbxwi_tokens_count, ufbxwi_arraycount(ufbxwi_tokens) == UFBXWI_TOKEN_COUNT - 1);
 
-uint32_t ufbxwi_hash_token(ufbxwi_token token)
+typedef struct ufbxwi_string_entry {
+	uint32_t hash;
+	uint32_t length;
+	ufbxwi_token token;
+	const char *data;
+} ufbxwi_string_entry;
+
+UFBXWI_LIST_TYPE(ufbxw_string_list, ufbxw_string);
+
+typedef struct ufbxwi_string_pool {
+	ufbxwi_allocator *ator;
+	ufbxwi_error *error;
+	bool failed;
+
+	ufbxwi_string_entry *entries;
+	uint32_t entry_count;
+	uint32_t entry_capacity;
+
+	ufbxw_string_list tokens;
+
+	char *block_pos;
+	char *block_end;
+} ufbxwi_string_pool;
+
+static void ufbxwi_mark_string_pool_failed(ufbxwi_string_pool *pool)
+{
+	pool->tokens.data = NULL;
+	pool->tokens.count = 0;
+	pool->tokens.capacity = 0;
+	pool->entries = NULL;
+	pool->entry_count = 0;
+	pool->entry_capacity = 0;
+}
+
+static bool ufbxwi_string_pool_rehash(ufbxwi_string_pool *pool)
+{
+	size_t capacity = ufbxwi_max_sz(pool->entry_capacity * 2, 512);
+	ufbxwi_string_entry *new_entries = ufbxwi_alloc(pool->ator, ufbxwi_string_entry, capacity);
+	ufbxwi_check(new_entries, false);
+
+	memset(new_entries, 0, capacity * sizeof(ufbxwi_string_entry));
+	ufbxwi_for(ufbxwi_string_entry, entry, pool->entries, pool->entry_capacity) {
+		// TODO: Better hashing
+		uint32_t index = entry->hash;
+		for (;;) {
+			uint32_t slot = (uint32_t)(index & (capacity - 1));
+			if (new_entries[slot].hash == 0) {
+				new_entries[slot] = *entry;
+				break;
+			}
+			index++;
+		}
+	}
+
+	ufbxwi_free(pool->ator, pool->entries);
+
+	pool->entries = new_entries;
+	pool->entry_capacity = (uint32_t)capacity;
+	return true;
+}
+
+static char *ufbxwi_copy_string(ufbxwi_string_pool *pool, const char *str, size_t length)
+{
+	char *copy = NULL;
+	if (length >= 256) {
+		copy = ufbxwi_alloc(pool->ator, char, length + 1);
+		ufbxwi_check(copy, NULL);
+	} else {
+		if (ufbxwi_to_size(pool->block_end - pool->block_pos) < length + 1) {
+			const size_t block_size = 4096;
+			char *block = ufbxwi_alloc(pool->ator, char, block_size);
+			ufbxwi_check(block, NULL);
+
+			pool->block_pos = block;
+			pool->block_end = block + block_size;
+		}
+
+		copy = pool->block_pos;
+		pool->block_pos = copy + (length + 1);
+	}
+
+	ufbxw_assert(copy);
+	memcpy(copy, str, length);
+	copy[length] = '\0';
+
+	return copy;
+}
+
+static bool ufbxwi_intern_string(ufbxwi_string_pool *pool, ufbxw_string *dst, const char *str, size_t length)
+{
+	if (length == 0) {
+		dst->data = ufbxwi_empty_char;
+		dst->length = 0;
+		return true;
+	} else if (length == SIZE_MAX) {
+		length = strlen(str);
+	}
+
+	size_t max_length = UINT32_MAX / 2;
+	if (length > max_length) {
+		ufbxwi_failf(pool->error, UFBXW_ERROR_STRING_TOO_LONG, "String is too long (%zu bytes, max %zu bytes)", length, max_length);
+		return false;
+	}
+
+	uint32_t hash = ufbxwi_hash_string(str, length);
+
+	if (pool->entry_count * 2 >= pool->entry_capacity) {
+		ufbxwi_check(ufbxwi_string_pool_rehash(pool), false);
+	}
+
+	uint32_t capacity = pool->entry_capacity;
+	ufbxwi_string_entry *entries = pool->entries;
+
+	uint32_t index = hash;
+	for (;;) {
+		uint32_t slot = index & (capacity - 1);
+		if (entries[slot].hash == hash && entries[slot].length == length && !memcmp(entries[slot].data, str, length)) {
+			dst->data = entries[slot].data;
+			dst->length = length;
+			return true;
+		} else if (entries[slot].hash == 0) {
+			break;
+		}
+		index++;
+	}
+
+	char *copy = ufbxwi_copy_string(pool, str, length);
+	ufbxwi_check(copy, false);
+
+	pool->entry_count++;
+
+	ufbxwi_string_entry *entry = &entries[index & (capacity - 1)];
+	entry->data = copy;
+	entry->hash = hash;
+	entry->token = UFBXWI_TOKEN_NONE;
+	entry->length = (uint32_t)length;
+
+	dst->data = copy;
+	dst->length = length;
+	return true;
+}
+
+static ufbxwi_token ufbxwi_intern_token(ufbxwi_string_pool *pool, const char *str, size_t length)
+{
+	if (length == 0) return UFBXWI_TOKEN_EMPTY;
+
+	size_t max_length = UINT32_MAX / 2;
+	if (length > max_length) {
+		ufbxwi_failf(pool->error, UFBXW_ERROR_STRING_TOO_LONG, "String is too long (%zu bytes, max %zu bytes)", length, max_length);
+		return UFBXWI_TOKEN_NONE;
+	}
+
+	uint32_t hash = ufbxwi_hash_string(str, length);
+
+	if (pool->entry_count * 2 >= pool->entry_capacity) {
+		ufbxwi_check(ufbxwi_string_pool_rehash(pool), UFBXWI_TOKEN_NONE);
+	}
+
+	uint32_t capacity = pool->entry_capacity;
+	ufbxwi_string_entry *entries = pool->entries;
+
+	uint32_t index = hash;
+	for (;;) {
+		uint32_t slot = index & (capacity - 1);
+		if (entries[slot].hash == hash && entries[slot].length == length && !memcmp(entries[slot].data, str, length)) {
+			if (entries[slot].token > 0) {
+				return entries[slot].token;
+			} else {
+				ufbxwi_token token = (ufbxwi_token)pool->tokens.count;
+				ufbxw_string *dst = ufbxwi_list_push_uninit(pool->ator, &pool->tokens, ufbxw_string);
+				ufbxwi_check(dst, UFBXWI_TOKEN_NONE);
+				dst->data = entries[slot].data;
+				dst->length = length;
+				entries[slot].token = token;
+				return token;
+			}
+		} else if (entries[slot].hash == 0) {
+			break;
+		}
+		index++;
+	}
+
+	char *copy = ufbxwi_copy_string(pool, str, length);
+	ufbxwi_check(copy, UFBXWI_TOKEN_NONE);
+
+	pool->entry_count++;
+
+	ufbxwi_token token = (ufbxwi_token)pool->tokens.count;
+	ufbxw_string *dst = ufbxwi_list_push_uninit(pool->ator, &pool->tokens, ufbxw_string);
+	ufbxwi_check(dst, UFBXWI_TOKEN_NONE);
+	dst->data = copy;
+	dst->length = length;
+
+	ufbxwi_string_entry *entry = &entries[index & (capacity - 1)];
+	entry->data = copy;
+	entry->hash = hash;
+	entry->token = token;
+	entry->length = (uint32_t)length;
+	return token;
+}
+
+static ufbxwi_token ufbxwi_get_token(const ufbxwi_string_pool *pool, const char *str, size_t length)
+{
+	if (length == 0) return UFBXWI_TOKEN_EMPTY;
+	if (length > UINT32_MAX / 2) return UFBXWI_TOKEN_NONE;
+	if (pool->entry_count == 0) return UFBXWI_TOKEN_NONE;
+
+	uint32_t hash = ufbxwi_hash_string(str, length);
+	uint32_t capacity = pool->entry_capacity;
+	const ufbxwi_string_entry *entries = pool->entries;
+
+	uint32_t index = hash;
+	for (;;) {
+		uint32_t slot = index & (capacity - 1);
+		if (entries[slot].hash == hash && entries[slot].length == length && !memcmp(entries[slot].data, str, length)) {
+			return entries[slot].token;
+		} else if (entries[slot].hash == 0) {
+			return UFBXWI_TOKEN_NONE;
+		}
+		index++;
+	}
+}
+
+static bool ufbxwi_intern_string_str(ufbxwi_string_pool *pool, ufbxw_string *dst, ufbxw_string str)
+{
+	return ufbxwi_intern_string(pool, dst, str.data, str.length);
+}
+
+static bool ufbxwi_intern_string_str_or_default(ufbxwi_string_pool *pool, ufbxw_string *dst, ufbxw_string str, ufbxw_string default_str)
+{
+	if (str.length > 0) {
+		return ufbxwi_intern_string(pool, dst, str.data, str.length);
+	} else {
+		return ufbxwi_intern_string(pool, dst, default_str.data, default_str.length);
+	}
+}
+
+static uint32_t ufbxwi_hash_token(ufbxwi_token token)
 {
 	uint32_t x = (uint32_t)token;
 	x ^= x >> 16;
@@ -4264,8 +4304,11 @@ uint32_t ufbxwi_hash_token(ufbxwi_token token)
 
 #ifdef UFBXWI_FEATURE_BUFFER
 
-#define ufbxwi_empty_int_buffer ((ufbxw_int_buffer){NULL,0})
+#ifdef __cplusplus
+#define ufbxwi_empty_vec3_buffer (ufbxw_vec3_buffer{0})
+#else
 #define ufbxwi_empty_vec3_buffer ((ufbxw_vec3_buffer){0})
+#endif
 
 typedef enum {
 	UFBXWI_BUFFER_TYPE_NONE,
@@ -4534,6 +4577,7 @@ static size_t ufbxwi_buffer_stream_read(void *dst, size_t dst_count, size_t offs
 		return fn.float_fn(user, (float*)dst, dst_count, offset);
 	case UFBXWI_BUFFER_TYPE_KEY_ATTR:
 		return fn.key_attr_fn(user, (ufbxwi_key_attr*)dst, dst_count, offset);
+	default: ufbxwi_unreachable("bad buffer type"); break;
 	}
 	return SIZE_MAX;
 }
@@ -4566,6 +4610,7 @@ static size_t ufbxwi_buffer_read_to(ufbxwi_buffer_pool *pool, ufbxw_buffer_id id
 			off += num_read;
 		}
 		return dst_count;
+	default: ufbxwi_unreachable("bad buffer state"); break;
 	}
 
 	return 0;
@@ -4610,6 +4655,7 @@ static ufbxwi_void_span ufbxwi_buffer_read(ufbxwi_buffer_pool *pool, ufbxw_buffe
 		result.data = temp;
 		result.count = off;
 	} break;
+	default: ufbxwi_unreachable("bad buffer state"); break;
 	}
 
 	return result;
@@ -4750,6 +4796,7 @@ static void ufbxwi_set_buffer(ufbxwi_buffer_pool *pool, ufbxw_buffer_id *p_dst, 
 {
 	if (src != 0) {
 		ufbxwi_buffer *buffer = ufbxwi_get_buffer(pool, src);
+		ufbxwi_ignore(buffer);
 		ufbxw_assert(buffer && buffer->refcount > 0);
 	}
 
@@ -4777,7 +4824,7 @@ static bool ufbxwi_make_buffer_owned(ufbxwi_buffer_pool *pool, ufbxw_buffer_id i
 	}
 
 	ufbxwi_reset_buffer(pool, buffer);
-	buffer->flags &= ~UFBXWI_BUFFER_FLAG_TEMPORARY;
+	buffer->flags &= ~(uint32_t)UFBXWI_BUFFER_FLAG_TEMPORARY;
 	buffer->state = UFBXWI_BUFFER_STATE_OWNED;
 	buffer->data.owned.data = data;
 	buffer->data.owned.alloc_size = alloc_size;
@@ -4787,7 +4834,6 @@ static bool ufbxwi_make_buffer_owned(ufbxwi_buffer_pool *pool, ufbxw_buffer_id i
 
 static const void *ufbxwi_buffer_get_data(ufbxwi_buffer_pool *pool, ufbxw_buffer_id id)
 {
-	ufbxwi_buffer_type type = ufbxwi_buffer_id_type(id);
 	ufbxwi_buffer *buffer = ufbxwi_get_buffer(pool, id);
 	if (!buffer) return NULL;
 
@@ -4800,13 +4846,13 @@ static const void *ufbxwi_buffer_get_data(ufbxwi_buffer_pool *pool, ufbxw_buffer
 		return buffer->data.external.data;
 	case UFBXWI_BUFFER_STATE_STREAM:
 		return NULL;
+	default: ufbxwi_unreachable("bad buffer state"); break;
 	}
 	return NULL;
 }
 
 ufbxwi_nodiscard static bool ufbxwi_buffer_materialize(ufbxwi_buffer_pool *pool, ufbxw_buffer_id id)
 {
-	ufbxwi_buffer_type type = ufbxwi_buffer_id_type(id);
 	ufbxwi_buffer *buffer = ufbxwi_get_buffer(pool, id);
 	if (!buffer) return false;
 
@@ -4819,6 +4865,7 @@ ufbxwi_nodiscard static bool ufbxwi_buffer_materialize(ufbxwi_buffer_pool *pool,
 	case UFBXWI_BUFFER_STATE_STREAM:
 		ufbxwi_check(ufbxwi_make_buffer_owned(pool, id), false);
 		return true;
+	default: ufbxwi_unreachable("bad buffer state"); break;
 	}
 	return false;
 }
@@ -4889,6 +4936,7 @@ static void ufbxwi_refer_buffers(ufbxwi_buffer_pool *dst, const ufbxwi_buffer_po
 			db->state = UFBXWI_BUFFER_STATE_STREAM;
 			db->data.stream = sb->data.stream;
 			break;
+		default: ufbxwi_unreachable("bad buffer state"); break;
 		}
 	}
 }
@@ -5052,7 +5100,7 @@ typedef uint32_t ufbxwi_prop_value;
 
 #define ufbxwi_prop_value_default(m_offset) ufbxwi_make_prop_value(UFBXWI_PROP_VALUE_DEFAULT, (uint32_t)(m_offset))
 #define ufbxwi_prop_value_field(m_offset) ufbxwi_make_prop_value(UFBXWI_PROP_VALUE_FIELD, (uint32_t)(m_offset))
-#define ufbxwi_prop_value_data(m_offset) ufbxwi_make_prop_value(UFBXWI_PROP_VALUE_DATA, (uint32_t)(m_offset));
+#define ufbxwi_prop_value_data(m_offset) ufbxwi_make_prop_value(UFBXWI_PROP_VALUE_DATA, (uint32_t)(m_offset))
 
 typedef struct {
 	ufbxwi_token token;
@@ -5716,8 +5764,8 @@ static const ufbxwi_object_desc ufbxwi_object_types[] = {
 typedef struct {
 	union {
 		bool bool_;
-		int32_t int32_t;
-		int64_t int64_t;
+		int32_t int32;
+		int64_t int64;
 		ufbxw_real real;
 		ufbxw_vec2 vec2;
 		ufbxw_vec3 vec3;
@@ -6494,6 +6542,7 @@ static bool ufbxwi_conn_add(ufbxw_scene *scene, ufbxwi_conn_type type, void *dat
 		conn->target_weight = (ufbxw_real)100.0;
 		return true;
 	} break;
+	default: ufbxwi_unreachable("bad connection type"); break;
 	}
 
 	return false;
@@ -6553,6 +6602,7 @@ static bool ufbxwi_conn_remove_one(ufbxw_scene *scene, ufbxwi_conn_type type, vo
 			}
 		}
 	} break;
+	default: ufbxwi_unreachable("bad connection type"); break;
 	}
 
 	return false;
@@ -6613,6 +6663,7 @@ static void ufbxwi_conn_remove_all(ufbxw_scene *scene, ufbxwi_conn_type type, vo
 		}
 		d->count = dst;
 	} break;
+	default: ufbxwi_unreachable("bad connection type"); break;
 	}
 }
 
@@ -6660,6 +6711,7 @@ static bool ufbxwi_conn_collect_ids(ufbxw_scene *scene, ufbxwi_id_list *ids, ufb
 			dst[i] = d.data[i].shape.id;
 		}
 	} break;
+	default: ufbxwi_unreachable("bad connection type"); break;
 	}
 
 	// Deduplicate found IDs
@@ -6675,7 +6727,7 @@ static bool ufbxwi_conn_collect_ids(ufbxw_scene *scene, ufbxwi_id_list *ids, ufb
 				prev = id;
 			}
 		}
-		ids->count = dst - ids->data;
+		ids->count = (size_t)(dst - ids->data);
 	}
 
 	return true;
@@ -6725,6 +6777,7 @@ static bool ufbxwi_conn_collect_conns(const ufbxw_scene *scene, ufbxwi_allocator
 			dst[i].dst_prop = UFBXWI_TOKEN_NONE;
 		}
 	} break;
+	default: ufbxwi_unreachable("bad connection type"); break;
 	}
 
 	return true;
@@ -6754,6 +6807,7 @@ static void ufbxwi_conn_clear(ufbxw_scene *scene, ufbxwi_conn_type type, const v
 		ufbxwi_blend_shape_conn_list *d = (ufbxwi_blend_shape_conn_list*)data;
 		d->count = 0;
 	} break;
+	default: ufbxwi_unreachable("bad connection type"); break;
 	}
 }
 
@@ -6796,6 +6850,7 @@ static bool ufbxwi_init_light(ufbxw_scene *scene, void *data)
 static bool ufbxwi_init_camera(ufbxw_scene *scene, void *data)
 {
 	ufbxwi_camera *camera = (ufbxwi_camera*)data;
+	ufbxwi_ignore(camera);
 	return true;
 }
 
@@ -7154,8 +7209,8 @@ static bool ufbxwi_props_rehash(ufbxw_scene *scene, ufbxwi_props *props, size_t 
 
 	uint32_t mask = new_capacity - 1;
 	for (size_t i = 0; i < old_capacity; i++) {
-		uint32_t token = old_slots[i].token;
-		if (token == 0 || token == ~0u) continue;
+		ufbxwi_token token = old_slots[i].token;
+		if (token == 0 || (uint32_t)token == ~0u) continue;
 
 		uint32_t hash = ufbxwi_hash_token(token);
 		for (uint32_t scan = 0; ; scan++) {
@@ -7177,8 +7232,6 @@ static bool ufbxwi_props_rehash(ufbxw_scene *scene, ufbxwi_props *props, size_t 
 static ufbxwi_prop *ufbxwi_props_find_prop(ufbxwi_props *props, ufbxwi_token token)
 {
 	if (props->count == 0) return NULL;
-
-	ufbxwi_prop *prop = NULL;
 
 	uint32_t mask = props->capacity - 1;
 	uint32_t hash = ufbxwi_hash_token(token);
@@ -7217,8 +7270,8 @@ static ufbxwi_prop *ufbxwi_props_add_prop(ufbxw_scene *scene, ufbxwi_props *prop
 	}
 
 	if (prop->token == 0) {
-		prop->token = (uint32_t)token;
-		prop->order = ++props->order_counter;
+		prop->token = token;
+		prop->order = (uint16_t)(++props->order_counter);
 		props->count++;
 	}
 
@@ -7263,6 +7316,7 @@ static ufbxwi_forceinline const void *ufbxwi_resolve_prop_value(const ufbxwi_ele
 		ufbxwi_dev_assert(offset < elem->prop_data_size);
 		base = elem->prop_data;
 		break;
+	default: ufbxwi_unreachable("bad property value type"); break;
 	}
 	return (const char*)base + offset;
 }
@@ -7283,6 +7337,7 @@ static ufbxwi_forceinline void *ufbxwi_edit_prop_value(ufbxwi_element *elem, ufb
 		ufbxwi_dev_assert(offset < elem->prop_data_size);
 		base = elem->prop_data;
 		break;
+	default: ufbxwi_unreachable("bad property value type"); break;
 	}
 	return (char*)base + offset;
 }
@@ -7395,7 +7450,7 @@ static ufbxwi_prop *ufbxwi_element_add_prop(ufbxw_scene *scene, ufbxwi_element *
 			if (prop) {
 				*new_prop = *prop;
 			} else {
-				new_prop->type = type;
+				new_prop->type = (uint16_t)type;
 			}
 			new_prop->value = value;
 			prop = new_prop;
@@ -7409,7 +7464,7 @@ static ufbxwi_prop *ufbxwi_element_add_prop(ufbxw_scene *scene, ufbxwi_element *
 			ufbxwi_prop_value value = ufbxwi_element_add_prop_data(scene, element, data_type);
 			ufbxwi_check(value, NULL);
 			prop->value = value;
-			prop->type = type;
+			prop->type = (uint16_t)type;
 		} else {
 			// TODO: Is this even a good check?
 			return NULL;
@@ -7458,7 +7513,7 @@ static ufbxwi_noinline bool ufbxwi_cast_value(void *dst, const void *src, ufbxw_
 			break;
 		}
 	} else if (dst_type == UFBXW_PROP_DATA_INT64) {
-		uint64_t *d = (uint64_t*)dst;
+		int64_t *d = (int64_t*)dst;
 		switch (src_type) {
 		case UFBXW_PROP_DATA_BOOL:
 			*d = *(const bool*)src ? 1 : 0;
@@ -7567,7 +7622,7 @@ static ufbxwi_forceinline bool ufbxwi_init_element_type_imp(ufbxw_scene *scene, 
 		ufbxwi_check(ufbxwi_props_rehash(scene, &et->props, desc->num_props), false);
 
 		ufbxwi_for(const ufbxwi_prop_desc, pd, desc->props, desc->num_props) {
-			ufbxwi_prop *prop = ufbxwi_props_add_prop(scene, &et->props, pd->name);
+			ufbxwi_prop *prop = ufbxwi_props_add_prop(scene, &et->props, (ufbxwi_token)pd->name);
 			if (!prop) return false;
 			prop->type = pd->type;
 			prop->value = pd->value_offset;
@@ -7593,7 +7648,7 @@ static ufbxwi_forceinline bool ufbxwi_init_element_type_imp(ufbxw_scene *scene, 
 		ufbxwi_for(const ufbxwi_prop_desc, pd, desc->props, desc->num_props) {
 			if (pd->flags & UFBXWI_PROP_FLAG_EXCLUDE_FROM_TEMPLATE) continue;
 
-			ufbxwi_prop *prop = ufbxwi_props_add_prop(scene, &tmpl_elem->props, pd->name);
+			ufbxwi_prop *prop = ufbxwi_props_add_prop(scene, &tmpl_elem->props, (ufbxwi_token)pd->name);
 			ufbxwi_check(prop, false);
 			prop->type = pd->type;
 			prop->value = ufbxwi_prop_value_type(pd->value_offset) == UFBXWI_PROP_VALUE_DEFAULT ? pd->value_offset : pd->default_offset;
@@ -7789,6 +7844,7 @@ static bool ufbxwi_disconnect_imp(ufbxw_scene *scene, ufbxw_connection_type type
 
 	bool removed_src = ufbxwi_conn_remove_one(scene, src_type, src_data, dst_id, src_prop, dst_prop);
 	bool removed_dst = ufbxwi_conn_remove_one(scene, dst_type, dst_data, src_id, src_prop, dst_prop);
+	ufbxwi_ignore(removed_dst);
 	ufbxw_assert(removed_src == removed_dst);
 	return removed_src;
 }
@@ -7868,6 +7924,7 @@ static void ufbxwi_disconnect_all_dst(ufbxw_scene *scene, ufbxw_connection_type 
 		void *dst_data = (char*)dst_elem + ufbxwi_conn_offset(info.dst_conn);
 
 		uint64_t dst_bits = dst_elem->conn_bits | (UFBXWI_CONN_BIT_PROPERTY | UFBXWI_CONN_BIT_ELEMENT);
+		ufbxwi_ignore(dst_bits);
 		ufbxw_assert((dst_bits & info.dst_mask) == info.dst_mask);
 
 		ufbxwi_conn_remove_all(scene, dst_type, dst_data, src_id);
@@ -7898,6 +7955,7 @@ static void ufbxwi_disconnect_all_src(ufbxw_scene *scene, ufbxw_connection_type 
 		void *src_data = (char*)src_elem + ufbxwi_conn_offset(info.src_conn);
 
 		uint64_t src_bits = src_elem->conn_bits | (UFBXWI_CONN_BIT_PROPERTY | UFBXWI_CONN_BIT_ELEMENT);
+		ufbxwi_ignore(src_bits);
 		ufbxw_assert((src_bits & info.src_mask) == info.src_mask);
 
 		ufbxwi_conn_remove_all(scene, src_type, src_data, dst_id);
@@ -7939,12 +7997,12 @@ static ufbxw_anim_prop ufbxwi_animate_prop(ufbxw_scene *scene, ufbxw_id id, ufbx
 	ufbxwi_element *element = ufbxwi_get_element(scene, id);
 	if (!element) return ufbxw_null_anim_prop;
 
-	ufbxwi_prop *p = ufbxwi_element_find_prop(scene, element, prop);
-	if (!p) return ufbxw_null_anim_prop;
+	ufbxwi_prop *anim_prop = ufbxwi_element_find_prop(scene, element, prop);
+	if (!anim_prop) return ufbxw_null_anim_prop;
 
 	size_t curve_count = 0;
 
-	ufbxwi_prop_type prop_type = scene->prop_types.data[p->type];
+	ufbxwi_prop_type prop_type = scene->prop_types.data[anim_prop->type];
 	switch (prop_type.data_type) {
 	case UFBXW_PROP_DATA_BOOL:
 	case UFBXW_PROP_DATA_INT32:
@@ -7977,7 +8035,7 @@ static ufbxw_anim_prop ufbxwi_animate_prop(ufbxw_scene *scene, ufbxw_id id, ufbx
 	if (curve_count == 0) return ufbxw_null_anim_prop;
 
 	const char *anim_name = "";
-	switch (p->token) {
+	switch (anim_prop->token) {
 	case UFBXWI_Lcl_Translation:
 		anim_name = "T";
 		break;
@@ -7988,14 +8046,14 @@ static ufbxw_anim_prop ufbxwi_animate_prop(ufbxw_scene *scene, ufbxw_id id, ufbx
 		anim_name = "S";
 		break;
 	default:
-		anim_name = scene->string_pool.tokens.data[p->token].data;
+		anim_name = scene->string_pool.tokens.data[anim_prop->token].data;
 		break;
 	}
 
 	ufbxw_anim_prop anim = { ufbxw_create_element(scene, UFBXW_ELEMENT_ANIM_PROP) };
 	ufbxw_set_name(scene, anim.id, anim_name);
 
-	ufbxwi_connect_imp(scene, UFBXW_CONNECTION_ANIM_PROPERTY, anim.id, id, 0, prop, 0);
+	ufbxwi_connect_imp(scene, UFBXW_CONNECTION_ANIM_PROPERTY, anim.id, id, UFBXWI_TOKEN_NONE, prop, 0);
 
 	if (layer.id != 0) {
 		ufbxwi_connect(scene, UFBXW_CONNECTION_ANIM_PROP_LAYER, anim.id, layer.id, 0);
@@ -8010,7 +8068,7 @@ static ufbxw_anim_prop ufbxwi_animate_prop(ufbxw_scene *scene, ufbxw_id id, ufbx
 	// For single channel properties, use the property name
 	if (curve_count == 1) {
 		ufbxw_string prop_name = scene->string_pool.tokens.data[prop];
-		ufbxw_string name = ufbxwi_format(&scene->ator, &scene->tmp_list, "d|%S", prop_name);
+		ufbxw_string name = ufbxwi_format(&scene->ator, &scene->tmp_list, "d|%S", &prop_name);
 		first_curve_prop = ufbxwi_intern_token(&scene->string_pool, name.data, name.length);
 	}
 
@@ -8030,7 +8088,7 @@ static ufbxw_anim_prop ufbxwi_animate_prop(ufbxw_scene *scene, ufbxw_id id, ufbx
 		p->flags = UFBXW_PROP_FLAG_ANIMATABLE;
 		p->value = ufbxwi_prop_value_field(offsetof(ufbxwi_anim_prop, defaults) + i * sizeof(ufbxw_real));
 
-		ufbxwi_connect_imp(scene, UFBXW_CONNECTION_ANIM_CURVE_PROP, curve.id, anim.id, 0, prop_name, 0);
+		ufbxwi_connect_imp(scene, UFBXW_CONNECTION_ANIM_CURVE_PROP, curve.id, anim.id, UFBXWI_TOKEN_NONE, prop_name, 0);
 	}
 
 	return anim;
@@ -8191,7 +8249,7 @@ static void ufbxwi_create_defaults(ufbxw_scene *scene)
 	}
 
 	if (!scene->opts.no_default_document) {
-		ufbxw_id id = ufbxw_create_element(scene, UFBXW_ELEMENT_DOCUMENT);
+		ufbxw_create_element(scene, UFBXW_ELEMENT_DOCUMENT);
 	}
 
 	if (!scene->opts.no_default_anim_stack) {
@@ -8584,16 +8642,16 @@ static void ufbxwi_generate_indices(ufbxw_scene *scene, ufbxw_mesh_attribute_des
 		// TODO: Better hashing
 		uint32_t slot = hash;
 		for (;;) {
-			slot = slot & (hash_count - 1);
+			slot = (uint32_t)(slot & (hash_count - 1));
 			if (hashes[slot].hash == hash) {
 				int32_t index = hashes[slot].index;
-				if (!memcmp((const char*)values.data + index * value_size, value, value_size)) {
+				if (!memcmp((const char*)values.data + (size_t)index * value_size, value, value_size)) {
 					indices.data[i] = index;
 					break;
 				}
 			} else if (hashes[slot].hash == 0) {
 				int32_t index = (int32_t)value_count++;
-				memcpy((char*)values.data + index * value_size, value, value_size);
+				memcpy((char*)values.data + (size_t)index * value_size, value, value_size);
 				indices.data[i] = index;
 				hashes[slot].hash = hash;
 				hashes[slot].index = index;
@@ -8737,6 +8795,8 @@ static void ufbxwi_prepare_scene(ufbxw_scene *scene, const ufbxw_prepare_opts *o
 	ufbxwi_check(elements.data);
 
 	size_t real_count = ufbxw_get_elements(scene, elements.data, elements.count);
+	ufbxwi_ignore(element_count);
+	ufbxwi_ignore(real_count);
 	ufbxw_assert(real_count == element_count);
 
 	qsort(elements.data, elements.count, sizeof(ufbxw_id), &ufbxwi_cmp_id);
@@ -8878,7 +8938,7 @@ static void ufbxwi_prepare_scene(ufbxw_scene *scene, const ufbxw_prepare_opts *o
 			if (!node) continue;
 			if (node->attribute != 0) continue;
 
-			ufbxw_bone bone = ufbxw_create_bone(scene, UFBXW_BONE_LIMB_NODE, cluster->node);
+			ufbxw_create_bone(scene, UFBXW_BONE_LIMB_NODE, cluster->node);
 			ufbxwi_check(!ufbxwi_is_fatal(&scene->error));
 		}
 	}
@@ -8987,7 +9047,7 @@ typedef struct ufbxwi_write_chunk_part ufbxwi_write_chunk_part;
 struct ufbxwi_write_chunk_part {
 	// Actual data for this part, suballocated from `buffer`.
 	void *data;
-	uint32_t size;
+	size_t size;
 
 	// Reusable memory buffer that this part uses.
 	ufbxwi_write_buffer *buffer;
@@ -9255,6 +9315,7 @@ static void ufbxwi_write_queue_resolve_reloc(ufbxwi_write_queue *wq, uint32_t re
 	case UFBXWI_WRITE_RELOC_RELATIVE_U64:
 		ufbxwi_write_u64(dst, relative_offset);
 		break;
+	default: ufbxwi_unreachable("bad relocation type"); break;
 	}
 
 	ufbxwi_dev_assert(patch_chunk->num_unresolved_relocs > 0);
@@ -9914,7 +9975,7 @@ static void ufbxwi_ascii_dom_string(ufbxwi_save_context *sc, const char *str, si
 		const char *end = str + length;
 		for (;;) {
 			// TODO: Line break escaping, other special characters
-			const char *quote = memchr(str, '"', ufbxwi_to_size(end - str));
+			const char *quote = (const char*)memchr(str, '"', ufbxwi_to_size(end - str));
 			if (!quote) {
 				ufbxwi_write(sc, str, ufbxwi_to_size(end - str));
 				break;
@@ -10027,11 +10088,11 @@ static void ufbxwi_ascii_dom_write(ufbxwi_save_context *sc, const char *tag, con
 			ufbxwi_write(sc, &str, 1);
 		} break;
 		case 'S': {
-			ufbxw_string str = va_arg(args, ufbxw_string);
+			ufbxw_string str = *va_arg(args, const ufbxw_string*);
 			ufbxwi_ascii_dom_string(sc, str.data, str.length);
 		} break;
 		case 'T': {
-			ufbxwi_token token = va_arg(args, ufbxwi_token);
+			ufbxwi_token token = (ufbxwi_token)va_arg(args, int);
 			ufbxw_string str = sc->scene->string_pool.tokens.data[token];
 			ufbxwi_ascii_dom_string(sc, str.data, str.length);
 		} break;
@@ -10062,7 +10123,7 @@ static ufbxwi_noinline bool ufbxwi_ascii_write_array_data(ufbxwi_save_thread_con
 
 	ufbxwi_line_buffer line_temp_buffer;
 
-	size_t line_elems = UFBXWI_ASCII_LINE_MAX_SCALARS / type_info.components;
+	size_t line_elems = (size_t)(UFBXWI_ASCII_LINE_MAX_SCALARS / type_info.components);
 	size_t line_scalars = line_elems * type_info.components;
 
 	size_t scalar_size = ufbxwi_buffer_type_infos[scalar_type].size;
@@ -10188,7 +10249,7 @@ static void ufbxwi_ascii_dom_write_array(ufbxwi_save_context *sc, const char *ta
 	ufbxwi_ascii_indent(sc);
 	ufbxwi_write(sc, "a: ", 3);
 
-	ufbxwi_buffer_type scalar_type = type_info.scalar_type;
+	ufbxwi_buffer_type scalar_type = (ufbxwi_buffer_type)type_info.scalar_type;
 	if ((type_info.flags & UFBXWI_BUFFER_TYPE_FLAG_ASCII_INT) != 0 && sc->opts.version >= 7200) {
 		scalar_type = UFBXWI_BUFFER_TYPE_INT;
 	}
@@ -10447,14 +10508,14 @@ static void ufbxwi_binary_dom_write(ufbxwi_save_context *sc, const char *tag, co
 			ufbxwi_write(sc, &value, 1);
 		} break;
 		case 'S': {
-			ufbxw_string value = va_arg(args, ufbxw_string);
+			ufbxw_string value = *va_arg(args, const ufbxw_string*);
 			uint32_t len_u32 = (uint32_t)value.length;
 			ufbxwi_write(sc, "S", 1);
 			ufbxwi_write(sc, &len_u32, 4);
 			ufbxwi_write(sc, value.data, value.length);
 		} break;
 		case 'T': {
-			ufbxwi_token token = va_arg(args, ufbxwi_token);
+			ufbxwi_token token = (ufbxwi_token)va_arg(args, int);
 			ufbxw_string value = sc->scene->string_pool.tokens.data[token];
 			uint32_t len_u32 = (uint32_t)value.length;
 			ufbxwi_write(sc, "S", 1);
@@ -10462,7 +10523,7 @@ static void ufbxwi_binary_dom_write(ufbxwi_save_context *sc, const char *tag, co
 			ufbxwi_write(sc, value.data, value.length);
 		} break;
 		case 'R': {
-			ufbxw_blob value = va_arg(args, ufbxw_blob);
+			ufbxw_blob value = *va_arg(args, const ufbxw_blob*);
 			uint32_t len_u32 = (uint32_t)value.size;
 			ufbxwi_write(sc, "R", 1);
 			ufbxwi_write(sc, &len_u32, 4);
@@ -10540,13 +10601,10 @@ static bool ufbxwi_deflate_buffer(ufbxwi_save_thread_context *tc, ufbxwi_write_c
 	ufbxwi_buffer_type_info type_info = ufbxwi_buffer_type_infos[type];
 
 	size_t buffer_count = input->count;
-	size_t scalar_count = buffer_count * type_info.components;
 	size_t data_size = buffer_count * type_info.size;
 
 	const size_t window_size = tc->opts->deflate_window_size;
 
-	ufbxwi_void_iterator src = { 0 };
-	size_t total_read = 0;
 	size_t total_written = 0;
 
 	size_t dst_size = tc->deflate.begin_fn(tc->deflate.user, data_size);
@@ -10567,28 +10625,27 @@ static bool ufbxwi_deflate_buffer(ufbxwi_save_thread_context *tc, ufbxwi_write_c
 	}
 
 	if (buffer_data) {
-		const char *src = buffer_data;
-		const char *src_end = src + data_size;
+		const char *src_data = buffer_data;
+		const char *src_end = src_data + data_size;
 		for (;;) {
-			size_t src_len = ufbxwi_to_size(src_end - src);
+			size_t src_len = ufbxwi_to_size(src_end - src_data);
 
 			ufbxw_deflate_advance_status status = { 0, 0 };
 			ufbxwi_mutable_void_span dst = ufbxwi_queue_write_reserve_at_least_in_chunk(tc->write_queue, chunk, dst_size);
-			ufbxw_deflate_advance_result result = ufbxwi_deflate_advance(tc, &status, dst.data, dst.count, src, src_len, true);
+			ufbxw_deflate_advance_result result = ufbxwi_deflate_advance(tc, &status, dst.data, dst.count, src_data, src_len, true);
 			ufbxwi_check(result != UFBXW_DEFLATE_ADVANCE_RESULT_ERROR, false);
 
-			src += status.bytes_read;
+			src_data += status.bytes_read;
 			total_written += status.bytes_written;
 			ufbxwi_queue_write_commit_in_chunk(tc->write_queue, chunk, status.bytes_written);
 
 			if (result == UFBXW_DEFLATE_ADVANCE_RESULT_COMPLETED) break;
 		}
 	} else {
-		size_t read_offset = 0;
 		size_t src_buffer_size = window_size * 2;
 		ufbxwi_check(ufbxwi_list_resize_uninit(tc->ator, &tc->tmp_input_buffer, char, src_buffer_size), false);
 
-		char *src = tc->tmp_input_buffer.data;
+		char *src_data = tc->tmp_input_buffer.data;
 		size_t src_pos = 0;
 		size_t src_len = 0;
 		bool at_end = false;
@@ -10599,7 +10656,7 @@ static bool ufbxwi_deflate_buffer(ufbxwi_save_thread_context *tc, ufbxwi_write_c
 				size_t elems_read = src_pos / type_info.size;
 				size_t bytes_read = elems_read * type_info.size;
 
-				memmove(src + src_pos - bytes_read, src + src_pos, src_len - src_pos);
+				memmove(src_data + src_pos - bytes_read, src_data + src_pos, src_len - src_pos);
 				src_pos -= bytes_read;
 				src_len -= bytes_read;
 				input_index += elems_read;
@@ -10607,7 +10664,7 @@ static bool ufbxwi_deflate_buffer(ufbxwi_save_thread_context *tc, ufbxwi_write_c
 				size_t input_left = buffer_count - input_index;
 				size_t input_buffer_left = (src_buffer_size - src_len) / type_info.size;
 				size_t to_read = ufbxwi_min_sz(input_left, input_buffer_left);
-				size_t num_read = ufbxwi_buffer_input_read_to(input, src + src_len, to_read, input_index);
+				size_t num_read = ufbxwi_buffer_input_read_to(input, src_data + src_len, to_read, input_index);
 				if (num_read == 0) {
 					ufbxwi_fail(tc->error, UFBXW_ERROR_BUFFER_STREAM, "failed to read buffer data");
 					return false;
@@ -10621,7 +10678,7 @@ static bool ufbxwi_deflate_buffer(ufbxwi_save_thread_context *tc, ufbxwi_write_c
 
 			ufbxw_deflate_advance_status status = { 0, 0 };
 			ufbxwi_mutable_void_span dst = ufbxwi_queue_write_reserve_at_least_in_chunk(tc->write_queue, chunk, dst_size);
-			ufbxw_deflate_advance_result result = ufbxwi_deflate_advance(tc, &status, dst.data, dst.count, src + src_pos, src_len - src_pos, at_end);
+			ufbxw_deflate_advance_result result = ufbxwi_deflate_advance(tc, &status, dst.data, dst.count, src_data + src_pos, src_len - src_pos, at_end);
 			ufbxwi_check(result != UFBXW_DEFLATE_ADVANCE_RESULT_ERROR, false);
 			src_pos += status.bytes_read;
 			total_written += status.bytes_written;
@@ -10753,6 +10810,7 @@ static void ufbxwi_binary_dom_write_array(ufbxwi_save_context *sc, const char *t
 			}
 
 		} break;
+		default: ufbxwi_unreachable("bad buffer state"); break;
 		}
 
 		ufbxwi_free_buffer(&sc->buffers, buffer_id);
@@ -10814,6 +10872,7 @@ static void ufbxwi_binary_dom_write_blob(ufbxwi_save_context *sc, const char *ta
 		}
 
 	} break;
+	default: ufbxwi_unreachable("bad buffer state"); break;
 	}
 
 	ufbxwi_free_buffer(&sc->buffers, blob.id);
@@ -10850,16 +10909,16 @@ static const char ufbxwi_binary_footer_data[] = "\xf8\x5a\x8c\x6a\xde\xf5\xd9\x7
 
 static void ufbxwi_binary_fileid_magic(char magic[16], const char *creation_time)
 {
-	ufbxwi_nounroll for (size_t i = 0; i < 16; i++) magic[i] = creation_time[ufbxwi_binary_magic_order[i]];
+	ufbxwi_nounroll for (size_t i = 0; i < 16; i++) magic[i] = creation_time[(uint8_t)ufbxwi_binary_magic_order[i]];
 	ufbxwi_nounroll for (size_t i = 1; i < 16; i++) magic[i] ^= magic[i - 1];
 	ufbxwi_nounroll for (size_t i = 0; i < 16; i++) magic[i] ^= ufbxwi_binary_fileid_key[i];
 }
 
 static void ufbxwi_binary_footer_magic(char magic[16], const char *creation_time)
 {
-	ufbxwi_nounroll for (size_t i = 0; i < 16; i++) magic[i] = creation_time[ufbxwi_binary_magic_order[i]];
+	ufbxwi_nounroll for (size_t i = 0; i < 16; i++) magic[i] = creation_time[(uint8_t)ufbxwi_binary_magic_order[i]];
 	ufbxwi_nounroll for (size_t i = 2; i < 16; i++) magic[i] ^= magic[i - 2];
-	ufbxwi_nounroll for (size_t i = 0; i < 16; i++) magic[i] ^= creation_time[ufbxwi_binary_magic_order[i]];
+	ufbxwi_nounroll for (size_t i = 0; i < 16; i++) magic[i] ^= creation_time[(uint8_t)ufbxwi_binary_magic_order[i]];
 	ufbxwi_nounroll for (size_t i = 1; i < 16; i++) magic[i] ^= magic[i - 1];
 	ufbxwi_nounroll for (size_t i = 0; i < 16; i++) magic[i] ^= ufbxwi_binary_footer_key[i];
 }
@@ -11014,14 +11073,14 @@ static void ufbxwi_save_props(ufbxwi_save_context *sc, const ufbxwi_element *ele
 		ufbxwi_prop *dst_prop = props;
 
 		ufbxwi_for(const ufbxwi_prop, prop, element->props.props, element->props.capacity) {
-			if (prop->token == 0 || prop->token == ~0u) continue;
+			if (prop->token == 0 || (uint32_t)prop->token == ~0u) continue;
 			*dst_prop = *prop;
 			dst_prop++;
 		}
 
 		if (default_props) {
 			ufbxwi_for(const ufbxwi_prop, prop, default_props->props, default_props->capacity) {
-				if (prop->token == 0 || prop->token == ~0u) continue;
+				if (prop->token == 0 || (uint32_t)prop->token == ~0u) continue;
 				*dst_prop = *prop;
 				dst_prop->flags |= UFBXWI_PROP_FLAG_TEMP_DEFAULT;
 				dst_prop++;
@@ -11030,14 +11089,14 @@ static void ufbxwi_save_props(ufbxwi_save_context *sc, const ufbxwi_element *ele
 
 		if (tmpl) {
 			ufbxwi_for(const ufbxwi_prop, prop, tmpl->props.props, tmpl->props.capacity) {
-				if (prop->token == 0 || prop->token == ~0u) continue;
+				if (prop->token == 0 || (uint32_t)prop->token == ~0u) continue;
 				*dst_prop = *prop;
 				dst_prop->flags |= UFBXWI_PROP_FLAG_TEMP_TEMPLATE;
 				dst_prop++;
 			}
 		}
 
-		ufbxw_assert(dst_prop - props == prop_count);
+		ufbxw_assert((size_t)(dst_prop - props) == prop_count);
 	}
 
 	// TODO: Better sort here
@@ -11108,62 +11167,63 @@ static void ufbxwi_save_props(ufbxwi_save_context *sc, const ufbxwi_element *ele
 
 		switch (type->data_type) {
 		case UFBXW_PROP_DATA_NONE: {
-			ufbxwi_dom_value(sc, "P", "SSSC", name, type->type, type->sub_type, flags);
+			ufbxwi_dom_value(sc, "P", "SSSC", &name, &type->type, &type->sub_type, flags);
 		} break;
 		case UFBXW_PROP_DATA_BOOL: {
 			const bool *d = (const bool*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCI", name, type->type, type->sub_type, flags, *d ? 1 : 0);
+			ufbxwi_dom_value(sc, "P", "SSSCI", &name, &type->type, &type->sub_type, flags, *d ? 1 : 0);
 		} break;
 		case UFBXW_PROP_DATA_INT32: {
 			const int32_t *d = (const int32_t*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCI", name, type->type, type->sub_type, flags, *d);
+			ufbxwi_dom_value(sc, "P", "SSSCI", &name, &type->type, &type->sub_type, flags, *d);
 		} break;
 		case UFBXW_PROP_DATA_INT64: {
 			const int64_t *d = (const int64_t*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCL", name, type->type, type->sub_type, flags, *d);
+			ufbxwi_dom_value(sc, "P", "SSSCL", &name, &type->type, &type->sub_type, flags, *d);
 		} break;
 		case UFBXW_PROP_DATA_REAL: {
 			const ufbxw_real *d = (const ufbxw_real*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCD", name, type->type, type->sub_type, flags, *d);
+			ufbxwi_dom_value(sc, "P", "SSSCD", &name, &type->type, &type->sub_type, flags, *d);
 		} break;
 		case UFBXW_PROP_DATA_VEC2: {
 			const ufbxw_vec2 *d = (const ufbxw_vec2*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCDD", name, type->type, type->sub_type, flags, d->x, d->y);
+			ufbxwi_dom_value(sc, "P", "SSSCDD", &name, &type->type, &type->sub_type, flags, d->x, d->y);
 		} break;
 		case UFBXW_PROP_DATA_VEC3: {
 			const ufbxw_vec3 *d = (const ufbxw_vec3*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCDDD", name, type->type, type->sub_type, flags, d->x, d->y, d->z);
+			ufbxwi_dom_value(sc, "P", "SSSCDDD", &name, &type->type, &type->sub_type, flags, d->x, d->y, d->z);
 		} break;
 		case UFBXW_PROP_DATA_VEC4: {
 			const ufbxw_vec4 *d = (const ufbxw_vec4*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCDDDD", name, type->type, type->sub_type, flags, d->x, d->y, d->z, d->w);
+			ufbxwi_dom_value(sc, "P", "SSSCDDDD", &name, &type->type, &type->sub_type, flags, d->x, d->y, d->z, d->w);
 		} break;
 		case UFBXW_PROP_DATA_STRING: {
 			const ufbxw_string *d = (const ufbxw_string*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCS", name, type->type, type->sub_type, flags, *d);
+			ufbxwi_dom_value(sc, "P", "SSSCS", &name, &type->type, &type->sub_type, flags, d);
 		} break;
 		case UFBXW_PROP_DATA_ID: {
-			ufbxwi_dom_value(sc, "P", "SSSC", name, type->type, type->sub_type, flags);
+			ufbxwi_dom_value(sc, "P", "SSSC", &name, &type->type, &type->sub_type, flags);
 		} break;
 		case UFBXW_PROP_DATA_REAL_STRING: {
 			const ufbxw_real_string *d = (const ufbxw_real_string*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCDS", name, type->type, type->sub_type, flags, d->value, d->string);
+			ufbxwi_dom_value(sc, "P", "SSSCDS", &name, &type->type, &type->sub_type, flags, d->value, &d->string);
 		} break;
 		case UFBXW_PROP_DATA_BLOB: {
 			const ufbxw_blob *d = (const ufbxw_blob*)data;
+			ufbxwi_ignore(d);
 			ufbxw_assert(0 && "TODO");
 		} break;
 		case UFBXW_PROP_DATA_USER_INT: {
 			const ufbxw_user_int *d = (const ufbxw_user_int*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCIII", name, type->type, type->sub_type, flags, d->value, d->min_value, d->max_value);
+			ufbxwi_dom_value(sc, "P", "SSSCIII", &name, &type->type, &type->sub_type, flags, d->value, d->min_value, d->max_value);
 		} break;
 		case UFBXW_PROP_DATA_USER_REAL: {
 			const ufbxw_user_real *d = (const ufbxw_user_real*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCDDD", name, type->type, type->sub_type, flags, d->value, d->min_value, d->max_value);
+			ufbxwi_dom_value(sc, "P", "SSSCDDD", &name, &type->type, &type->sub_type, flags, d->value, d->min_value, d->max_value);
 		} break;
 		case UFBXW_PROP_DATA_USER_ENUM: {
 			const ufbxw_user_enum *d = (const ufbxw_user_enum*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCIS", name, type->type, type->sub_type, flags, d->value, d->options);
+			ufbxwi_dom_value(sc, "P", "SSSCIS", &name, &type->type, &type->sub_type, flags, d->value, &d->options);
 		} break;
 		default:
 			ufbxwi_unreachable("bad data type");
@@ -11204,9 +11264,9 @@ static ufbxw_string ufbxwi_format_element_type_and_name(ufbxwi_save_context *sc,
 	const ufbxwi_element_type *et = &scene->element_types.data[element->type_id];
 	ufbxw_string fbx_type_str = scene->string_pool.tokens.data[et->fbx_type];
 	if (sc->ascii) {
-		return ufbxwi_save_format(sc, "%S::%S", fbx_type_str, element->name);
+		return ufbxwi_save_format(sc, "%S::%S", &fbx_type_str, &element->name);
 	} else {
-		return ufbxwi_save_format(sc, "%S%0\x01%S", element->name, fbx_type_str);
+		return ufbxwi_save_format(sc, "%S%0\x01%S", &element->name, &fbx_type_str);
 	}
 }
 
@@ -11245,9 +11305,9 @@ static size_t ufbxwi_stream_polygon_vertex_index(void *user, int32_t *dst, size_
 			// TODO: Failure
 			ufbxw_assert(read_count == to_read);
 
-			stream->face_offset_buffer_offset += read_count;
+			stream->face_offset_buffer_offset += (uint32_t)read_count;
 			stream->face_offset_tmp_pos = 0;
-			stream->face_offset_tmp_length = read_count;
+			stream->face_offset_tmp_length = (uint32_t)read_count;
 		}
 
 		int32_t ix = stream->face_offset_tmp[stream->face_offset_tmp_pos] - 1;
@@ -11313,7 +11373,7 @@ static void ufbxwi_save_mesh_data(ufbxwi_save_context *sc, ufbxwi_element *eleme
 		ufbxwi_dom_open(sc, info->layer_element_name, "I", attrib->set);
 
 		ufbxwi_dom_value(sc, "Version", "I", info->version);
-		ufbxwi_dom_value(sc, "Name", "S", attrib->name);
+		ufbxwi_dom_value(sc, "Name", "S", &attrib->name);
 		ufbxwi_dom_value(sc, "MappingInformationType", "C", ufbxwi_attribute_mapping_infos[attrib->mapping].name);
 		ufbxwi_dom_value(sc, "ReferenceInformationType", "C", attrib->indices ? "IndexToDirect" : "Direct");
 
@@ -11436,6 +11496,7 @@ static void ufbxwi_save_skeleton(ufbxwi_save_context *sc, ufbxwi_skeleton *skele
 	case UFBXW_BONE_ROOT:
 		ufbxwi_dom_value(sc, "TypeFlags", "CCC", "Null", "Skeleton", "Root");
 		break;
+	default: ufbxwi_unreachable("bad bone type"); break;
 	}
 }
 
@@ -11471,7 +11532,7 @@ static void ufbxwi_save_bind_pose(ufbxwi_save_context *sc, ufbxwi_bind_pose *pos
 static void ufbxwi_save_binding_table(ufbxwi_save_context *sc, ufbxwi_binding_table *table)
 {
 	ufbxwi_for_list(ufbxwi_binding_entry, entry, table->entries) {
-		ufbxwi_dom_value(sc, "Entry", "SCSC", entry->property_entry, "FbxPropertyEntry", entry->semantic_entry, "FbxSemanticEntry");
+		ufbxwi_dom_value(sc, "Entry", "SCSC", &entry->property_entry, "FbxPropertyEntry", &entry->semantic_entry, "FbxSemanticEntry");
 	}
 }
 
@@ -11482,7 +11543,7 @@ static void ufbxwi_save_selection_set(ufbxwi_save_context *sc, ufbxwi_selection_
 		ufbxwi_element *element = ufbxwi_get_element(sc->scene, id);
 		if (element) {
 			ufbxw_string name = ufbxwi_format_element_type_and_name(sc, element);
-			ufbxwi_dom_value(sc, "Member", "S", name);
+			ufbxwi_dom_value(sc, "Member", "S", &name);
 		}
 	}
 }
@@ -11495,7 +11556,7 @@ static void ufbxwi_save_selection_node(ufbxwi_save_context *sc, ufbxwi_selection
 		ufbxwi_node *node = ufbxwi_get_node(sc->scene, selection->node);
 		if (node) {
 			ufbxw_string name = ufbxwi_format_element_type_and_name(sc, &node->element);
-			ufbxwi_dom_value(sc, "Node", "S", name);
+			ufbxwi_dom_value(sc, "Node", "S", &name);
 		}
 	}
 
@@ -11615,10 +11676,10 @@ static void ufbxwi_save_anim_curve_keys(ufbxwi_save_context *sc, ufbxwi_element 
 		attr.packed_weight = ufbxwi_pack_weight(weight_right) | ufbxwi_pack_weight(weight_next_left) << 16;
 		attr.packed_velocity = 0;
 
-		if (attr_count > 0 && key_flags[attr_count - 1] == flags && !memcmp(&key_attrs[attr_count - 1], &attr, sizeof(ufbxwi_key_attr))) {
+		if (attr_count > 0 && (uint32_t)key_flags[attr_count - 1] == flags && !memcmp(&key_attrs[attr_count - 1], &attr, sizeof(ufbxwi_key_attr))) {
 			key_refcounts[attr_count - 1]++;
 		} else {
-			key_flags[attr_count] = flags;
+			key_flags[attr_count] = (int32_t)flags;
 			key_attrs[attr_count] = attr;
 			key_refcounts[attr_count] = 1;
 			attr_count++;
@@ -11674,7 +11735,6 @@ static void ufbxwi_save_element(ufbxwi_save_context *sc, ufbxwi_element *element
 	ufbxw_element_type type = ufbxwi_id_type(id);
 	const ufbxwi_element_type *et = &scene->element_types.data[element->type_id];
 
-	ufbxwi_token fbx_type = et->fbx_type;
 	ufbxwi_token sub_type = et->sub_type;
 	ufbxwi_token obj_type = et->object_type;
 
@@ -11696,9 +11756,9 @@ static void ufbxwi_save_element(ufbxwi_save_context *sc, ufbxwi_element *element
 		ufbxw_string name = ufbxwi_format_element_type_and_name(sc, element);
 
 		if ((flags & UFBXWI_SAVE_ELEMENT_NO_ID) != 0) {
-			ufbxwi_dom_open(sc, obj_type_str.data, "ST", name, sub_type);
+			ufbxwi_dom_open(sc, obj_type_str.data, "ST", &name, sub_type);
 		} else {
-			ufbxwi_dom_open(sc, obj_type_str.data, "LST", (int64_t)id, name, sub_type);
+			ufbxwi_dom_open(sc, obj_type_str.data, "LST", (int64_t)id, &name, sub_type);
 		}
 	}
 
@@ -11733,7 +11793,7 @@ static void ufbxwi_save_element(ufbxwi_save_context *sc, ufbxwi_element *element
 	} else if (type == UFBXW_ELEMENT_MATERIAL) {
 		const ufbxwi_material *material = (const ufbxwi_material*)element;
 		ufbxwi_dom_value(sc, "Version", "I", 120);
-		ufbxwi_dom_value(sc, "ShadingModel", "S", material->shading_model);
+		ufbxwi_dom_value(sc, "ShadingModel", "S", &material->shading_model);
 		ufbxwi_dom_value(sc, "MultiLayer", "I", material->multi_layer ? 1 : 0);
 	} else if (type == UFBXW_ELEMENT_IMPLEMENTATION) {
 		ufbxwi_dom_value(sc, "Version", "I", 100);
@@ -11741,7 +11801,7 @@ static void ufbxwi_save_element(ufbxwi_save_context *sc, ufbxwi_element *element
 		ufbxwi_dom_value(sc, "Version", "I", 100);
 	} else if (type == UFBXW_ELEMENT_TEXTURE) {
 		const ufbxwi_texture *texture = (const ufbxwi_texture*)element;
-		ufbxwi_dom_value(sc, "Type", "S", texture->type);
+		ufbxwi_dom_value(sc, "Type", "S", &texture->type);
 		ufbxwi_dom_value(sc, "Version", "I", 202);
 	} else if (type == UFBXW_ELEMENT_VIDEO) {
 		ufbxwi_dom_value(sc, "Type", "C", "Clip");
@@ -11826,15 +11886,15 @@ static void ufbxwi_save_element(ufbxwi_save_context *sc, ufbxwi_element *element
 
 	if (type == UFBXW_ELEMENT_TEXTURE) {
 		const ufbxwi_texture *texture = (const ufbxwi_texture*)element;
-		ufbxwi_dom_value(sc, "FileName", "S", texture->filename);
-		ufbxwi_dom_value(sc, "RelativeFilename", "S", texture->relative_filename);
+		ufbxwi_dom_value(sc, "FileName", "S", &texture->filename);
+		ufbxwi_dom_value(sc, "RelativeFilename", "S", &texture->relative_filename);
 	}
 
 	if (type == UFBXW_ELEMENT_VIDEO) {
 		const ufbxwi_video *video = (const ufbxwi_video*)element;
 		ufbxwi_dom_value(sc, "UseMipMap", "I", 0);
-		ufbxwi_dom_value(sc, "Filename", "S", video->filename);
-		ufbxwi_dom_value(sc, "RelativeFilename", "S", video->relative_filename);
+		ufbxwi_dom_value(sc, "Filename", "S", &video->filename);
+		ufbxwi_dom_value(sc, "RelativeFilename", "S", &video->relative_filename);
 		ufbxwi_dom_blob(sc, "Content", video->content);
 	}
 
@@ -12056,11 +12116,11 @@ static void ufbxwi_save_takes(ufbxwi_save_context *sc)
 		if (type != UFBXW_ELEMENT_ANIM_STACK) continue;
 		ufbxwi_element *element = slot->element;
 
-		ufbxw_string take_name = ufbxwi_save_format(sc, "%S.tak", element->name);
+		ufbxw_string take_name = ufbxwi_save_format(sc, "%S.tak", &element->name);
 
 		ufbxwi_anim_stack *stack = (ufbxwi_anim_stack*)element;
-		ufbxwi_dom_open(sc, "Take", "S", element->name);
-		ufbxwi_dom_value(sc, "FileName", "S", take_name);
+		ufbxwi_dom_open(sc, "Take", "S", &element->name);
+		ufbxwi_dom_value(sc, "FileName", "S", &take_name);
 		ufbxwi_dom_value(sc, "LocalTime", "LL", stack->local_start, stack->local_stop);
 		ufbxwi_dom_value(sc, "ReferenceTime", "LL", stack->reference_start, stack->reference_stop);
 		ufbxwi_dom_close(sc);
@@ -12109,7 +12169,7 @@ static void ufbxwi_save_root(ufbxwi_save_context *sc)
 		ufbxwi_dom_value(sc, "FBXHeaderVersion", "I", 1003);
 		ufbxwi_dom_value(sc, "FBXVersion", "I", sc->opts.version);
 		ufbxwi_save_timestamp(sc, timestamp);
-		ufbxwi_dom_value(sc, "Creator", "S", creator);
+		ufbxwi_dom_value(sc, "Creator", "S", &creator);
 
 		{
 			ufbxw_id scene_info_id = ufbxw_get_scene_info_id(scene);
@@ -12136,9 +12196,9 @@ static void ufbxwi_save_root(ufbxwi_save_context *sc)
 		ufbxwi_binary_fileid_magic(file_id_magic, creation_time);
 
 		ufbxw_blob file_id_blob = { file_id_magic, 16 };
-		ufbxwi_dom_value(sc, "FileId", "R", file_id_blob);
+		ufbxwi_dom_value(sc, "FileId", "R", &file_id_blob);
 		ufbxwi_dom_value(sc, "CreationTime", "C", creation_time);
-		ufbxwi_dom_value(sc, "Creator", "S", creator);
+		ufbxwi_dom_value(sc, "Creator", "S", &creator);
 	}
 
 	{
@@ -12238,18 +12298,104 @@ static void ufbxwi_stdio_close(void *user)
 
 static bool ufbxwi_open_file_write(ufbxw_write_stream *stream, const char *path, size_t path_len, ufbxwi_error *error)
 {
-	if (path_len >= 1023) {
-		ufbxwi_failf(error, UFBXW_ERROR_PATH_TOO_LONG, "Path too long (%zu bytes, max 1023)", path_len);
+	FILE *f = NULL;
+#if !defined(UFBXW_STANDARD_C) && defined(_WIN32)
+	if (path_len >= SIZE_MAX / sizeof(wchar_t)) {
+		ufbxwi_failf(error, UFBXW_ERROR_ALLOCATION_FAILURE, "Allocation size overflow");
 		return false;
 	}
+	size_t alloc_size = (path_len + 1) * sizeof(wchar_t);
+	wchar_t wpath_buf[256], *wpath = wpath_buf;
+	if (path_len >= ufbxwi_arraycount(wpath_buf)) {
+		wpath = (wchar_t*)ufbxw_malloc(alloc_size);
+		if (!wpath) {
+			ufbxwi_failf(error, UFBXW_ERROR_ALLOCATION_FAILURE, "Failed to allocate %zu bytes", alloc_size);
+			return false;
+		}
+	}
 
-	// TODO: Do this properly
-	char copy[1024];
+	// Convert UTF-8 to UTF-16 but allow lone surrogates as the Windows
+	// file system encoding allows them as well.
+	size_t index = 0;
+	size_t wlen = 0;
+	while (index < path_len) {
+		uint8_t c = (uint8_t)path[index];
+		size_t left = path_len - index;
+
+		if ((c & 0x80) == 0) {
+			wpath[wlen++] = (wchar_t)c;
+			index += 1;
+			continue;
+		} else if ((c & 0xe0) == 0xc0 && left >= 2) {
+			uint8_t t0 = (uint8_t)path[index + 1];
+			uint32_t code = (uint32_t)c << 8 | (uint32_t)t0;
+			if ((code & 0xc0) == 0x80 && code >= 0xc280) {
+				wpath[wlen++] = (wchar_t)((c & 0x1f) << 6 | (t0 & 0x3f));
+				index += 2;
+				continue;
+			}
+		} else if ((c & 0xf0) == 0xe0 && left >= 3) {
+			uint8_t t0 = (uint8_t)path[index + 1], t1 = (uint8_t)path[index + 2];
+			uint32_t code = (uint32_t)c << 16 | (uint32_t)t0 << 8 | (uint32_t)t1;
+			if ((code & 0xc0c0) == 0x8080 && code >= 0xe0a080) {
+				wpath[wlen++] = (wchar_t)((c & 0x0f) << 12 | (t0 & 0x3f) << 6 | (t1 & 0x3f));
+				index += 3;
+				continue;
+			}
+		} else if ((c & 0xf8) == 0xf0 && left >= 4) {
+			uint8_t t0 = (uint8_t)path[index + 1], t1 = (uint8_t)path[index + 2], t2 = (uint8_t)path[index + 3];
+			uint32_t code = (uint32_t)c << 24 | (uint32_t)t0 << 16 | (uint32_t)t1 << 8 | (uint32_t)t2;
+			if ((code & 0xc0c0c0) == 0x808080 && code >= 0xf0908080u && code <= 0xf48fbfbfu) {
+				uint32_t value = (uint32_t)((c & 0x07) << 18 | (t0 & 0x3f) << 12 | (t1 & 0x3f) << 6 | (t2 & 0x3f));
+				value -= 0x10000;
+				wpath[wlen++] = (wchar_t)(0xd800 + (value >> 10));
+				wpath[wlen++] = (wchar_t)(0xdc00 + (value & 0x3ff));
+				index += 4;
+				continue;
+			}
+		}
+
+		break;
+	}
+	if (index != path_len) {
+		if (wpath != wpath_buf) {
+			ufbxw_free(wpath, alloc_size);
+		}
+		ufbxwi_failf(error, UFBXW_ERROR_FILE_OPEN_FAILED, "Invalid UTF-8");
+		return false;
+	}
+	wpath[wlen] = 0;
+
+#if defined(_MSC_VER) && _MSC_VER >= 1400
+	if (_wfopen_s(&f, wpath, L"wb") != 0) f = NULL;
+#else
+	f = _wfopen(wpath, L"wb");
+#endif
+	if (wpath != wpath_buf) {
+		ufbxw_free(wpath, alloc_size);
+	}
+#else
+	if (path_len == SIZE_MAX) {
+		ufbxwi_failf(error, UFBXW_ERROR_ALLOCATION_FAILURE, "Allocation size overflow");
+		return false;
+	}
+	size_t alloc_size = path_len + 1;
+	char copy_buf[256], *copy = copy_buf;
+	if (path_len >= ufbxwi_arraycount(copy_buf)) {
+		copy = (char*)ufbxw_malloc(alloc_size);
+		if (!copy) {
+			ufbxwi_failf(error, UFBXW_ERROR_ALLOCATION_FAILURE, "Failed to allocate %zu bytes", alloc_size);
+			return false;
+		}
+	}
 	memcpy(copy, path, path_len);
 	copy[path_len] = '\0';
 
-	// TODO: fopen_s() etc
-	FILE *f = fopen(copy, "wb");
+	f = fopen(copy, "wb");
+	if (copy != copy_buf) {
+		ufbxw_free(copy, alloc_size);
+	}
+#endif
 	if (!f) {
 		ufbxwi_failf(error, UFBXW_ERROR_FILE_OPEN_FAILED, "Failed to open file: %.*s", (int)path_len, path);
 		return false;
@@ -13921,6 +14067,7 @@ ufbxw_abi ufbxw_bone ufbxw_create_bone(ufbxw_scene *scene, ufbxw_bone_type type,
 	case UFBXW_BONE_ROOT:
 		type_name = "Root";
 		break;
+	default: break;
 	}
 	ufbxw_bone bone = { ufbxw_create_element_ex(scene, UFBXW_ELEMENT_BONE, type_name) };
 	if (node.id) {
@@ -13985,7 +14132,7 @@ ufbxw_abi void ufbxw_mesh_set_single_material(ufbxw_scene *scene, ufbxw_mesh mes
 {
 	ufbxw_mesh_attribute_desc desc = { 0 };
 	if (material_index == 0) {
-		desc.indices = ufbxw_external_int_array(scene, (const int32_t*)&ufbxwi_prop_default_data.zero.int32_t, 1).id;
+		desc.indices = ufbxw_external_int_array(scene, (const int32_t*)&ufbxwi_prop_default_data.zero.int32, 1).id;
 	} else {
 		desc.indices = ufbxw_copy_int_array(scene, &material_index, 1).id;
 	}
@@ -14114,6 +14261,8 @@ ufbxw_abi void ufbxw_skin_deformer_set_dual_quaternion_weights(ufbxw_scene *scen
 
 	size_t index_count = ufbxwi_get_buffer_size(&scene->buffers, indices.id);
 	size_t weights_count = ufbxwi_get_buffer_size(&scene->buffers, weights.id);
+	ufbxwi_ignore(index_count);
+	ufbxwi_ignore(weights_count);
 	ufbxw_assert(index_count == weights_count);
 
 	ufbxwi_set_buffer_from_user(&scene->buffers, &sd->dual_quaternion_indices.id, indices.id);
@@ -14149,6 +14298,8 @@ ufbxw_abi void ufbxw_skin_cluster_set_weights(ufbxw_scene *scene, ufbxw_skin_clu
 
 	size_t index_count = ufbxwi_get_buffer_size(&scene->buffers, indices.id);
 	size_t weights_count = ufbxwi_get_buffer_size(&scene->buffers, weights.id);
+	ufbxwi_ignore(index_count);
+	ufbxwi_ignore(weights_count);
 	ufbxw_assert(index_count == weights_count);
 
 	ufbxwi_set_buffer_from_user(&scene->buffers, &sc->indices.id, indices.id);
@@ -14257,6 +14408,8 @@ ufbxw_abi void ufbxw_blend_shape_set_offsets(ufbxw_scene *scene, ufbxw_blend_sha
 
 	size_t index_count = ufbxwi_get_buffer_size(&scene->buffers, indices.id);
 	size_t offset_count = ufbxwi_get_buffer_size(&scene->buffers, offsets.id);
+	ufbxwi_ignore(index_count);
+	ufbxwi_ignore(offset_count);
 	ufbxw_assert(index_count == offset_count);
 
 	ufbxwi_set_buffer_from_user(&scene->buffers, &bs->indices.id, indices.id);
@@ -14384,6 +14537,7 @@ ufbxw_abi ufbxw_material ufbxw_create_material(ufbxw_scene *scene, ufbxw_materia
 		break;
 	case UFBXW_MATERIAL_CUSTOM:
 		break;
+	default: break;
 	}
 	ufbxw_material material = { ufbxw_create_element_ex(scene, UFBXW_ELEMENT_MATERIAL, type_name) };
 	return material;
@@ -14438,6 +14592,7 @@ ufbxw_abi ufbxw_texture ufbxw_create_texture(ufbxw_scene *scene, ufbxw_texture_t
 	case UFBXW_TEXTURE_FILE:
 		type_name = "FbxFileTexture";
 		break;
+	default: break;
 	}
 	ufbxw_texture texture = { ufbxw_create_element_ex(scene, UFBXW_ELEMENT_TEXTURE, type_name) };
 	return texture;
@@ -14998,6 +15153,7 @@ ufbxw_abi void ufbxw_anim_curve_set_data(ufbxw_scene *scene, ufbxw_anim_curve cu
 
 	size_t num_times = ufbxwi_get_buffer_size(&scene->buffers, data->key_times.id);
 	size_t num_values = ufbxwi_get_buffer_size(&scene->buffers, data->key_values.id);
+	ufbxwi_ignore(num_values);
 
 	if (data->key_times.id && data->key_values.id) {
 		ufbxw_assert(num_times == num_values);
@@ -15047,7 +15203,7 @@ ufbxw_abi void ufbxw_scene_set_coordinate_axes(ufbxw_scene *scene, ufbxw_coordin
 
 ufbxw_abi ufbxw_coordinate_axes ufbxw_scene_get_coordinate_axes(ufbxw_scene *scene)
 {
-	ufbxw_coordinate_axes axes = { 0 };
+	ufbxw_coordinate_axes axes = { (ufbxw_coordinate_axis)0 };
 
 	ufbxwi_global_settings *gs = ufbxwi_get_global_settings_by_id(scene, scene->global_settings_id);
 	if (!gs) return axes;
@@ -15177,7 +15333,7 @@ ufbxw_abi void ufbxw_validate_scene(const ufbxw_scene *scene)
 
 ufbxw_abi bool ufbxw_open_file_write(ufbxw_write_stream *stream, const char *path, size_t path_len, ufbxw_error *error)
 {
-	ufbxwi_error err = { 0 };
+	ufbxwi_error err = { { (ufbxw_error_type)0 } };
 	if (!ufbxwi_open_file_write(stream, path, path_len, &err)) {
 		if (error) {
 			*error = err.error;
@@ -15533,6 +15689,18 @@ ufbxw_abi ufbxw_string ufbxw_str(const char *str)
 }
 #endif
 
+#endif
+
+#if defined(_MSC_VER)
+	#pragma warning(pop)
+#endif
+
+#if defined(__clang__)
+	#pragma clang diagnostic pop
+#endif
+
+#if defined(__GNUC__)
+	#pragma GCC diagnostic pop
 #endif
 
 #endif

@@ -102,6 +102,98 @@ static void *ufbxwt_result_alloc(void *user, size_t size)
 }
 #endif
 
+UFBXWT_TEST(write_to_file_unicode)
+#if UFBXWT_IMPL
+{
+	const char *filename = "output/write_file_\x61\xce\xb2\xe3\x82\xab\xf0\x9f\x98\x82.fbx";
+	ufbxw_scene *scene = ufbxw_create_scene(NULL);
+	ufbxwt_assert(scene);
+	ufbxwt_create_node(scene, "Test");
+
+	char path[256];
+	size_t path_len = strlen(filename);
+	memcpy(path, filename, path_len);
+	memset(path + path_len, 'x', sizeof(path) - path_len);
+
+	ufbxw_error error;
+	ufbxwt_assert(ufbxw_save_file_len(scene, path, path_len, NULL, &error));
+	ufbxwt_assert(error.type == UFBXW_ERROR_NONE);
+
+	ufbx_scene *loaded = ufbx_load_file(filename, NULL, NULL);
+	ufbxwt_assert(loaded);
+	ufbxwt_assert(ufbx_find_node(loaded, "Test"));
+	ufbx_free_scene(loaded);
+
+	ufbxw_free_scene(scene);
+}
+#endif
+
+UFBXWT_TEST(write_to_file_long_path)
+#if UFBXWT_IMPL
+{
+	char path[258];
+	size_t path_len = 0;
+	const char *filename = "output/write_file_long.fbx";
+	size_t filename_len = strlen(filename);
+	while (path_len + filename_len < sizeof(path) - 1) {
+		path[path_len++] = '.';
+		path[path_len++] = '/';
+	}
+	memcpy(path + path_len, filename, filename_len);
+	path_len += filename_len;
+
+	ufbxw_scene *scene = ufbxw_create_scene(NULL);
+	ufbxwt_assert(scene);
+	ufbxwt_create_node(scene, "Test");
+	ufbxw_error error;
+	bool ok = ufbxw_save_file_len(scene, path, path_len, NULL, &error);
+	ufbxw_free_scene(scene);
+#if defined(_WIN32)
+	// The CRT may reject long paths even after allocating the path buffer.
+	if (!ok) {
+		ufbxwt_assert(error.type == UFBXW_ERROR_FILE_OPEN_FAILED);
+		return;
+	}
+#endif
+	ufbxwt_assert(ok);
+	ufbxwt_assert(error.type == UFBXW_ERROR_NONE);
+
+	ufbx_scene *loaded = ufbx_load_file(filename, NULL, NULL);
+	ufbxwt_assert(loaded);
+	ufbxwt_assert(ufbx_find_node(loaded, "Test"));
+	ufbx_free_scene(loaded);
+}
+#endif
+
+UFBXWT_TEST(write_to_file_invalid_utf8)
+#if UFBXWT_IMPL
+{
+#if !defined(UFBXW_STANDARD_C) && defined(_WIN32)
+	ufbxw_write_stream stream = { 0 };
+	ufbxw_error error;
+	const char *paths[] = {
+		"output/write_file_\xff.fbx",
+		"output/write_file_\xe2\x82",
+		"output/write_file_\xe2\x41\xac.fbx",
+		"output/write_file_\xe0\x80\xaf.fbx",
+		"output/write_file_\xf4\x90\x80\x80.fbx",
+	};
+	for (size_t i = 0; i < sizeof(paths) / sizeof(paths[0]); i++) {
+		ufbxwt_assert(!ufbxw_open_file_write(&stream, paths[i], strlen(paths[i]), &error));
+		ufbxwt_assert(error.type == UFBXW_ERROR_FILE_OPEN_FAILED);
+		ufbxwt_assert(strstr(error.description, "Invalid UTF-8"));
+	}
+
+	char long_path[1200];
+	memset(long_path, 'x', sizeof(long_path));
+	long_path[sizeof(long_path) - 1] = '\xff';
+	ufbxwt_assert(!ufbxw_open_file_write(&stream, long_path, sizeof(long_path), &error));
+	ufbxwt_assert(error.type == UFBXW_ERROR_FILE_OPEN_FAILED);
+	ufbxwt_assert(strstr(error.description, "Invalid UTF-8"));
+#endif
+}
+#endif
+
 UFBXWT_TEST(write_to_memory)
 #if UFBXWT_IMPL
 {

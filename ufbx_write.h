@@ -5,6 +5,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#if defined(_MSC_VER)
+	#pragma warning(push)
+	#pragma warning(disable: 4201) // nonstandard extension used: nameless struct/union
+#endif
+
 #ifndef ufbxw_abi
 #define ufbxw_abi
 #endif
@@ -72,8 +77,19 @@
 // `ufbxw_source_version` contains the version of the corresponding source file.
 // HINT: The version can be compared numerically to the result of `ufbxw_pack_version()`,
 // for example `#if UFBXW_VERSION >= ufbxw_pack_version(0, 12, 0)`.
-#define UFBXW_HEADER_VERSION ufbxw_pack_version(0, 3, 0)
+#define UFBXW_HEADER_VERSION ufbxw_pack_version(0, 4, 0)
 #define UFBXW_VERSION UFBXW_HEADER_VERSION
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+ufbxw_abi_data const uint32_t ufbxw_source_version;
+
+#ifdef __cplusplus
+}
+#endif
+
 
 // -- Configuration
 
@@ -128,11 +144,19 @@ typedef struct ufbxw_transform {
 	ufbxw_vec3 scale;
 } ufbxw_transform;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 ufbxw_abi_data const ufbxw_string ufbxw_empty_string;
 ufbxw_abi_data const ufbxw_vec2 ufbxw_zero_vec2;
 ufbxw_abi_data const ufbxw_vec3 ufbxw_zero_vec3;
 ufbxw_abi_data const ufbxw_vec4 ufbxw_zero_vec4;
 ufbxw_abi_data const ufbxw_matrix ufbxw_identity_matrix;
+
+#ifdef __cplusplus
+}
+#endif
 
 typedef enum ufbxw_rotation_order {
 	UFBXW_ROTATION_ORDER_XYZ,
@@ -1734,6 +1758,10 @@ ufbxw_abi ufbxw_string ufbxw_str(const char *str);
 
 #ifdef __cplusplus
 }
+#endif
+
+#if defined(_MSC_VER)
+	#pragma warning(pop)
 #endif
 
 #endif
