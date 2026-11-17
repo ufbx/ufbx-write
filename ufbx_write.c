@@ -62,11 +62,11 @@
 // -- Platform
 
 #if defined(__GNUC__)
-	#define UFBXI_GNUC __GNUC__
-	#define UFBXI_GNUC_VERSION ufbx_pack_version(__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__)
+	#define UFBXWI_GNUC __GNUC__
+	#define UFBXWI_GNUC_VERSION ufbx_pack_version(__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__)
 #else
-	#define UFBXI_GNUC 0
-	#define UFBXI_GNUC_VERSION 0
+	#define UFBXWI_GNUC 0
+	#define UFBXWI_GNUC_VERSION 0
 #endif
 
 #if !defined(UFBXW_STANDARD_C) && defined(_MSC_VER)
