@@ -65,18 +65,29 @@ UFBXWT_TEST(set_connection_replace_null)
 	}
 
 	{
-		ufbxw_texture texture = ufbxw_create_texture(scene, UFBXW_TEXTURE_FILE);
+		ufbxw_texture texture_a = ufbxw_create_texture(scene, UFBXW_TEXTURE_FILE);
+		ufbxw_texture texture_b = ufbxw_create_texture(scene, UFBXW_TEXTURE_FILE);
 		ufbxw_video video_a = ufbxw_create_video(scene);
 		ufbxw_video video_b = ufbxw_create_video(scene);
 
-		ufbxw_texture_set_video(scene, texture, video_a);
-		ufbxwt_assert(ufbxw_texture_get_video(scene, texture).id == video_a.id);
+		ufbxw_texture_set_video(scene, texture_a, video_a);
+		ufbxw_texture_set_video(scene, texture_b, video_a);
+		ufbxwt_assert(ufbxw_texture_get_video(scene, texture_a).id == video_a.id);
+		ufbxwt_assert(ufbxw_texture_get_video(scene, texture_b).id == video_a.id);
 
-		ufbxw_texture_set_video(scene, texture, video_b);
-		ufbxwt_assert(ufbxw_texture_get_video(scene, texture).id == video_b.id);
+		ufbxw_texture_set_video(scene, texture_a, video_b);
+		ufbxwt_assert(ufbxw_texture_get_video(scene, texture_a).id == video_b.id);
+		ufbxwt_assert(ufbxw_texture_get_video(scene, texture_b).id == video_a.id);
 
-		ufbxw_texture_set_video(scene, texture, ufbxw_null_video);
-		ufbxwt_assert(ufbxw_texture_get_video(scene, texture).id == ufbxw_null_id);
+		ufbxw_texture_set_video(scene, texture_a, video_a);
+		ufbxw_texture_set_video(scene, texture_a, ufbxw_null_video);
+		ufbxwt_assert(ufbxw_texture_get_video(scene, texture_a).id == ufbxw_null_id);
+		ufbxwt_assert(ufbxw_texture_get_video(scene, texture_b).id == video_a.id);
+
+		ufbxw_texture_set_video(scene, texture_a, video_a);
+		ufbxw_delete_element(scene, video_a.id);
+		ufbxwt_assert(ufbxw_texture_get_video(scene, texture_a).id == ufbxw_null_id);
+		ufbxwt_assert(ufbxw_texture_get_video(scene, texture_b).id == ufbxw_null_id);
 	}
 
 	ufbxw_free_scene(scene);
