@@ -131,15 +131,16 @@ UFBXWT_TEST(write_to_file_unicode)
 UFBXWT_TEST(write_to_file_long_path)
 #if UFBXWT_IMPL
 {
-	char path[2048];
+	char path[258];
 	size_t path_len = 0;
-	for (size_t i = 0; i < 600; i++) {
+	const char *filename = "output/write_file_long.fbx";
+	size_t filename_len = strlen(filename);
+	while (path_len + filename_len < sizeof(path) - 1) {
 		path[path_len++] = '.';
 		path[path_len++] = '/';
 	}
-	const char *filename = "output/write_file_long.fbx";
-	memcpy(path + path_len, filename, strlen(filename));
-	path_len += strlen(filename);
+	memcpy(path + path_len, filename, filename_len);
+	path_len += filename_len;
 
 	ufbxw_scene *scene = ufbxw_create_scene(NULL);
 	ufbxwt_assert(scene);
