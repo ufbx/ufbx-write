@@ -133,11 +133,19 @@ typedef struct ufbxw_transform {
 	ufbxw_vec3 scale;
 } ufbxw_transform;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 ufbxw_abi_data const ufbxw_string ufbxw_empty_string;
 ufbxw_abi_data const ufbxw_vec2 ufbxw_zero_vec2;
 ufbxw_abi_data const ufbxw_vec3 ufbxw_zero_vec3;
 ufbxw_abi_data const ufbxw_vec4 ufbxw_zero_vec4;
 ufbxw_abi_data const ufbxw_matrix ufbxw_identity_matrix;
+
+#ifdef __cplusplus
+}
+#endif
 
 typedef enum ufbxw_rotation_order {
 	UFBXW_ROTATION_ORDER_XYZ,
