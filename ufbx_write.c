@@ -38,6 +38,7 @@
 	#pragma clang diagnostic ignored "-Wmissing-field-initializers"
 	#pragma clang diagnostic ignored "-Wmissing-braces"
 	#pragma clang diagnostic ignored "-Wcovered-switch-default"
+	#pragma clang diagnostic ignored "-Wunreachable-code-break"
 	#pragma clang diagnostic ignored "-Wunused-parameter"
 	#pragma clang diagnostic ignored "-Wunused-function"
 #endif
