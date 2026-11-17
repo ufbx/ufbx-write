@@ -23,6 +23,7 @@ set(UFBXW_STRICT_WARNINGS_GNU
 
 set(UFBXW_STRICT_WARNINGS_CLANG
     ${UFBXW_STRICT_WARNINGS_GNU}
+    -ferror-limit=1000
     -Wunreachable-code-break
     -Wmissing-variable-declarations
     -Wfloat-conversion
