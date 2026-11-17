@@ -3216,243 +3216,6 @@ static ufbxwi_noinline uint32_t ufbxwi_hash_string(const char *str, size_t lengt
 
 #ifdef UFBXWI_FEATURE_STRING_POOL
 
-typedef struct ufbxwi_string_entry {
-	uint32_t hash;
-	uint32_t length;
-	uint32_t token;
-	const char *data;
-} ufbxwi_string_entry;
-
-UFBXWI_LIST_TYPE(ufbxw_string_list, ufbxw_string);
-
-typedef struct ufbxwi_string_pool {
-	ufbxwi_allocator *ator;
-	ufbxwi_error *error;
-	bool failed;
-
-	ufbxwi_string_entry *entries;
-	uint32_t entry_count;
-	uint32_t entry_capacity;
-
-	ufbxw_string_list tokens;
-
-	char *block_pos;
-	char *block_end;
-} ufbxwi_string_pool;
-
-static void ufbxwi_mark_string_pool_failed(ufbxwi_string_pool *pool)
-{
-	pool->tokens.data = NULL;
-	pool->tokens.count = 0;
-	pool->tokens.capacity = 0;
-	pool->entries = NULL;
-	pool->entry_count = 0;
-	pool->entry_capacity = 0;
-}
-
-bool ufbxwi_string_pool_rehash(ufbxwi_string_pool *pool)
-{
-	size_t capacity = ufbxwi_max_sz(pool->entry_capacity * 2, 512);
-	ufbxwi_string_entry *new_entries = ufbxwi_alloc(pool->ator, ufbxwi_string_entry, capacity);
-	ufbxwi_check(new_entries, false);
-
-	memset(new_entries, 0, capacity * sizeof(ufbxwi_string_entry));
-	ufbxwi_for(ufbxwi_string_entry, entry, pool->entries, pool->entry_capacity) {
-		// TODO: Better hashing
-		uint32_t index = entry->hash;
-		for (;;) {
-			uint32_t slot = index & (capacity - 1);
-			if (new_entries[slot].hash == 0) {
-				new_entries[slot] = *entry;
-				break;
-			}
-			index++;
-		}
-	}
-
-	ufbxwi_free(pool->ator, pool->entries);
-
-	pool->entries = new_entries;
-	pool->entry_capacity = (uint32_t)capacity;
-	return true;
-}
-
-static char *ufbxwi_copy_string(ufbxwi_string_pool *pool, const char *str, size_t length)
-{
-	char *copy = NULL;
-	if (length >= 256) {
-		copy = ufbxwi_alloc(pool->ator, char, length + 1);
-		ufbxwi_check(copy, NULL);
-	} else {
-		if (ufbxwi_to_size(pool->block_end - pool->block_pos) < length + 1) {
-			const size_t block_size = 4096;
-			char *block = ufbxwi_alloc(pool->ator, char, block_size);
-			ufbxwi_check(block, NULL);
-
-			pool->block_pos = block;
-			pool->block_end = block + block_size;
-		}
-
-		copy = pool->block_pos;
-		pool->block_pos = copy + (length + 1);
-	}
-
-	ufbxw_assert(copy);
-	memcpy(copy, str, length);
-	copy[length] = '\0';
-
-	return copy;
-}
-
-static bool ufbxwi_intern_string(ufbxwi_string_pool *pool, ufbxw_string *dst, const char *str, size_t length)
-{
-	if (length == 0) {
-		dst->data = ufbxwi_empty_char;
-		dst->length = 0;
-		return true;
-	} else if (length == SIZE_MAX) {
-		length = strlen(str);
-	}
-
-	size_t max_length = UINT32_MAX / 2;
-	if (length > max_length) {
-		ufbxwi_failf(pool->error, UFBXW_ERROR_STRING_TOO_LONG, "String is too long (%zu bytes, max %zu bytes)", length, max_length);
-		return false;
-	}
-
-	uint32_t hash = ufbxwi_hash_string(str, length);
-
-	if (pool->entry_count * 2 >= pool->entry_capacity) {
-		ufbxwi_check(ufbxwi_string_pool_rehash(pool), false);
-	}
-
-	uint32_t capacity = pool->entry_capacity;
-	ufbxwi_string_entry *entries = pool->entries;
-
-	uint32_t index = hash;
-	for (;;) {
-		uint32_t slot = index & (capacity - 1);
-		if (entries[slot].hash == hash && entries[slot].length == length && !memcmp(entries[slot].data, str, length)) {
-			dst->data = entries[slot].data;
-			dst->length = length;
-			return true;
-		} else if (entries[slot].hash == 0) {
-			break;
-		}
-		index++;
-	}
-
-	char *copy = ufbxwi_copy_string(pool, str, length);
-	ufbxwi_check(copy, false);
-
-	pool->entry_count++;
-
-	ufbxwi_string_entry *entry = &entries[index & (capacity - 1)];
-	entry->data = copy;
-	entry->hash = hash;
-	entry->token = 0;
-	entry->length = (uint32_t)length;
-
-	dst->data = copy;
-	dst->length = length;
-	return true;
-}
-
-static uint32_t ufbxwi_intern_token(ufbxwi_string_pool *pool, const char *str, size_t length)
-{
-	if (length == 0) return 1; // UFBXWI_TOKEN_EMPTY
-
-	size_t max_length = UINT32_MAX / 2;
-	if (length > max_length) {
-		ufbxwi_failf(pool->error, UFBXW_ERROR_STRING_TOO_LONG, "String is too long (%zu bytes, max %zu bytes)", length, max_length);
-		return false;
-	}
-
-	uint32_t hash = ufbxwi_hash_string(str, length);
-
-	if (pool->entry_count * 2 >= pool->entry_capacity) {
-		ufbxwi_check(ufbxwi_string_pool_rehash(pool), 0);
-	}
-
-	uint32_t capacity = pool->entry_capacity;
-	ufbxwi_string_entry *entries = pool->entries;
-
-	uint32_t index = hash;
-	for (;;) {
-		uint32_t slot = index & (capacity - 1);
-		if (entries[slot].hash == hash && entries[slot].length == length && !memcmp(entries[slot].data, str, length)) {
-			if (entries[slot].token > 0) {
-				return entries[slot].token;
-			} else {
-				uint32_t token = (uint32_t)pool->tokens.count;
-				ufbxw_string *dst = ufbxwi_list_push_uninit(pool->ator, &pool->tokens, ufbxw_string);
-				ufbxwi_check(dst, 0);
-				dst->data = entries[slot].data;
-				dst->length = length;
-				entries[slot].token = token;
-				return token;
-			}
-		} else if (entries[slot].hash == 0) {
-			break;
-		}
-		index++;
-	}
-
-	char *copy = ufbxwi_copy_string(pool, str, length);
-	ufbxwi_check(copy, 0);
-
-	pool->entry_count++;
-
-	uint32_t token = (uint32_t)pool->tokens.count;
-	ufbxw_string *dst = ufbxwi_list_push_uninit(pool->ator, &pool->tokens, ufbxw_string);
-	ufbxwi_check(dst, 0);
-	dst->data = copy;
-	dst->length = length;
-
-	ufbxwi_string_entry *entry = &entries[index & (capacity - 1)];
-	entry->data = copy;
-	entry->hash = hash;
-	entry->token = token;
-	entry->length = (uint32_t)length;
-	return token;
-}
-
-static uint32_t ufbxwi_get_token(const ufbxwi_string_pool *pool, const char *str, size_t length)
-{
-	if (length == 0) return 1; // UFBXWI_TOKEN_EMPTY
-	if (length > UINT32_MAX / 2) return 0;
-	if (pool->entry_count == 0) return 0;
-
-	uint32_t hash = ufbxwi_hash_string(str, length);
-	uint32_t capacity = pool->entry_capacity;
-	const ufbxwi_string_entry *entries = pool->entries;
-
-	uint32_t index = hash;
-	for (;;) {
-		uint32_t slot = index & (capacity - 1);
-		if (entries[slot].hash == hash && entries[slot].length == length && !memcmp(entries[slot].data, str, length)) {
-			return entries[slot].token;
-		} else if (entries[slot].hash == 0) {
-			return 0;
-		}
-		index++;
-	}
-}
-
-static bool ufbxwi_intern_string_str(ufbxwi_string_pool *pool, ufbxw_string *dst, ufbxw_string str)
-{
-	return ufbxwi_intern_string(pool, dst, str.data, str.length);
-}
-
-static bool ufbxwi_intern_string_str_or_default(ufbxwi_string_pool *pool, ufbxw_string *dst, ufbxw_string str, ufbxw_string default_str)
-{
-	if (str.length > 0) {
-		return ufbxwi_intern_string(pool, dst, str.data, str.length);
-	} else {
-		return ufbxwi_intern_string(pool, dst, default_str.data, default_str.length);
-	}
-}
-
 typedef enum ufbxwi_token {
 	UFBXWI_TOKEN_NONE,
 	UFBXWI_TOKEN_EMPTY,
@@ -4268,6 +4031,243 @@ static const ufbxw_string ufbxwi_tokens[] = {
 
 // Not including none
 ufbxw_static_assert(ufbxwi_tokens_count, ufbxwi_arraycount(ufbxwi_tokens) == UFBXWI_TOKEN_COUNT - 1);
+
+typedef struct ufbxwi_string_entry {
+	uint32_t hash;
+	uint32_t length;
+	ufbxwi_token token;
+	const char *data;
+} ufbxwi_string_entry;
+
+UFBXWI_LIST_TYPE(ufbxw_string_list, ufbxw_string);
+
+typedef struct ufbxwi_string_pool {
+	ufbxwi_allocator *ator;
+	ufbxwi_error *error;
+	bool failed;
+
+	ufbxwi_string_entry *entries;
+	uint32_t entry_count;
+	uint32_t entry_capacity;
+
+	ufbxw_string_list tokens;
+
+	char *block_pos;
+	char *block_end;
+} ufbxwi_string_pool;
+
+static void ufbxwi_mark_string_pool_failed(ufbxwi_string_pool *pool)
+{
+	pool->tokens.data = NULL;
+	pool->tokens.count = 0;
+	pool->tokens.capacity = 0;
+	pool->entries = NULL;
+	pool->entry_count = 0;
+	pool->entry_capacity = 0;
+}
+
+bool ufbxwi_string_pool_rehash(ufbxwi_string_pool *pool)
+{
+	size_t capacity = ufbxwi_max_sz(pool->entry_capacity * 2, 512);
+	ufbxwi_string_entry *new_entries = ufbxwi_alloc(pool->ator, ufbxwi_string_entry, capacity);
+	ufbxwi_check(new_entries, false);
+
+	memset(new_entries, 0, capacity * sizeof(ufbxwi_string_entry));
+	ufbxwi_for(ufbxwi_string_entry, entry, pool->entries, pool->entry_capacity) {
+		// TODO: Better hashing
+		uint32_t index = entry->hash;
+		for (;;) {
+			uint32_t slot = index & (capacity - 1);
+			if (new_entries[slot].hash == 0) {
+				new_entries[slot] = *entry;
+				break;
+			}
+			index++;
+		}
+	}
+
+	ufbxwi_free(pool->ator, pool->entries);
+
+	pool->entries = new_entries;
+	pool->entry_capacity = (uint32_t)capacity;
+	return true;
+}
+
+static char *ufbxwi_copy_string(ufbxwi_string_pool *pool, const char *str, size_t length)
+{
+	char *copy = NULL;
+	if (length >= 256) {
+		copy = ufbxwi_alloc(pool->ator, char, length + 1);
+		ufbxwi_check(copy, NULL);
+	} else {
+		if (ufbxwi_to_size(pool->block_end - pool->block_pos) < length + 1) {
+			const size_t block_size = 4096;
+			char *block = ufbxwi_alloc(pool->ator, char, block_size);
+			ufbxwi_check(block, NULL);
+
+			pool->block_pos = block;
+			pool->block_end = block + block_size;
+		}
+
+		copy = pool->block_pos;
+		pool->block_pos = copy + (length + 1);
+	}
+
+	ufbxw_assert(copy);
+	memcpy(copy, str, length);
+	copy[length] = '\0';
+
+	return copy;
+}
+
+static bool ufbxwi_intern_string(ufbxwi_string_pool *pool, ufbxw_string *dst, const char *str, size_t length)
+{
+	if (length == 0) {
+		dst->data = ufbxwi_empty_char;
+		dst->length = 0;
+		return true;
+	} else if (length == SIZE_MAX) {
+		length = strlen(str);
+	}
+
+	size_t max_length = UINT32_MAX / 2;
+	if (length > max_length) {
+		ufbxwi_failf(pool->error, UFBXW_ERROR_STRING_TOO_LONG, "String is too long (%zu bytes, max %zu bytes)", length, max_length);
+		return false;
+	}
+
+	uint32_t hash = ufbxwi_hash_string(str, length);
+
+	if (pool->entry_count * 2 >= pool->entry_capacity) {
+		ufbxwi_check(ufbxwi_string_pool_rehash(pool), false);
+	}
+
+	uint32_t capacity = pool->entry_capacity;
+	ufbxwi_string_entry *entries = pool->entries;
+
+	uint32_t index = hash;
+	for (;;) {
+		uint32_t slot = index & (capacity - 1);
+		if (entries[slot].hash == hash && entries[slot].length == length && !memcmp(entries[slot].data, str, length)) {
+			dst->data = entries[slot].data;
+			dst->length = length;
+			return true;
+		} else if (entries[slot].hash == 0) {
+			break;
+		}
+		index++;
+	}
+
+	char *copy = ufbxwi_copy_string(pool, str, length);
+	ufbxwi_check(copy, false);
+
+	pool->entry_count++;
+
+	ufbxwi_string_entry *entry = &entries[index & (capacity - 1)];
+	entry->data = copy;
+	entry->hash = hash;
+	entry->token = UFBXWI_TOKEN_NONE;
+	entry->length = (uint32_t)length;
+
+	dst->data = copy;
+	dst->length = length;
+	return true;
+}
+
+static ufbxwi_token ufbxwi_intern_token(ufbxwi_string_pool *pool, const char *str, size_t length)
+{
+	if (length == 0) return UFBXWI_TOKEN_EMPTY;
+
+	size_t max_length = UINT32_MAX / 2;
+	if (length > max_length) {
+		ufbxwi_failf(pool->error, UFBXW_ERROR_STRING_TOO_LONG, "String is too long (%zu bytes, max %zu bytes)", length, max_length);
+		return UFBXWI_TOKEN_NONE;
+	}
+
+	uint32_t hash = ufbxwi_hash_string(str, length);
+
+	if (pool->entry_count * 2 >= pool->entry_capacity) {
+		ufbxwi_check(ufbxwi_string_pool_rehash(pool), UFBXWI_TOKEN_NONE);
+	}
+
+	uint32_t capacity = pool->entry_capacity;
+	ufbxwi_string_entry *entries = pool->entries;
+
+	uint32_t index = hash;
+	for (;;) {
+		uint32_t slot = index & (capacity - 1);
+		if (entries[slot].hash == hash && entries[slot].length == length && !memcmp(entries[slot].data, str, length)) {
+			if (entries[slot].token > 0) {
+				return entries[slot].token;
+			} else {
+				ufbxwi_token token = (ufbxwi_token)pool->tokens.count;
+				ufbxw_string *dst = ufbxwi_list_push_uninit(pool->ator, &pool->tokens, ufbxw_string);
+				ufbxwi_check(dst, UFBXWI_TOKEN_NONE);
+				dst->data = entries[slot].data;
+				dst->length = length;
+				entries[slot].token = token;
+				return token;
+			}
+		} else if (entries[slot].hash == 0) {
+			break;
+		}
+		index++;
+	}
+
+	char *copy = ufbxwi_copy_string(pool, str, length);
+	ufbxwi_check(copy, UFBXWI_TOKEN_NONE);
+
+	pool->entry_count++;
+
+	ufbxwi_token token = (ufbxwi_token)pool->tokens.count;
+	ufbxw_string *dst = ufbxwi_list_push_uninit(pool->ator, &pool->tokens, ufbxw_string);
+	ufbxwi_check(dst, UFBXWI_TOKEN_NONE);
+	dst->data = copy;
+	dst->length = length;
+
+	ufbxwi_string_entry *entry = &entries[index & (capacity - 1)];
+	entry->data = copy;
+	entry->hash = hash;
+	entry->token = token;
+	entry->length = (uint32_t)length;
+	return token;
+}
+
+static ufbxwi_token ufbxwi_get_token(const ufbxwi_string_pool *pool, const char *str, size_t length)
+{
+	if (length == 0) return UFBXWI_TOKEN_EMPTY;
+	if (length > UINT32_MAX / 2) return UFBXWI_TOKEN_NONE;
+	if (pool->entry_count == 0) return UFBXWI_TOKEN_NONE;
+
+	uint32_t hash = ufbxwi_hash_string(str, length);
+	uint32_t capacity = pool->entry_capacity;
+	const ufbxwi_string_entry *entries = pool->entries;
+
+	uint32_t index = hash;
+	for (;;) {
+		uint32_t slot = index & (capacity - 1);
+		if (entries[slot].hash == hash && entries[slot].length == length && !memcmp(entries[slot].data, str, length)) {
+			return entries[slot].token;
+		} else if (entries[slot].hash == 0) {
+			return UFBXWI_TOKEN_NONE;
+		}
+		index++;
+	}
+}
+
+static bool ufbxwi_intern_string_str(ufbxwi_string_pool *pool, ufbxw_string *dst, ufbxw_string str)
+{
+	return ufbxwi_intern_string(pool, dst, str.data, str.length);
+}
+
+static bool ufbxwi_intern_string_str_or_default(ufbxwi_string_pool *pool, ufbxw_string *dst, ufbxw_string str, ufbxw_string default_str)
+{
+	if (str.length > 0) {
+		return ufbxwi_intern_string(pool, dst, str.data, str.length);
+	} else {
+		return ufbxwi_intern_string(pool, dst, default_str.data, default_str.length);
+	}
+}
 
 uint32_t ufbxwi_hash_token(ufbxwi_token token)
 {
@@ -7174,7 +7174,7 @@ static bool ufbxwi_props_rehash(ufbxw_scene *scene, ufbxwi_props *props, size_t 
 
 	uint32_t mask = new_capacity - 1;
 	for (size_t i = 0; i < old_capacity; i++) {
-		uint32_t token = old_slots[i].token;
+		ufbxwi_token token = old_slots[i].token;
 		if (token == 0 || token == ~0u) continue;
 
 		uint32_t hash = ufbxwi_hash_token(token);
@@ -7237,7 +7237,7 @@ static ufbxwi_prop *ufbxwi_props_add_prop(ufbxw_scene *scene, ufbxwi_props *prop
 	}
 
 	if (prop->token == 0) {
-		prop->token = (uint32_t)token;
+		prop->token = token;
 		prop->order = ++props->order_counter;
 		props->count++;
 	}
@@ -7587,7 +7587,7 @@ static ufbxwi_forceinline bool ufbxwi_init_element_type_imp(ufbxw_scene *scene, 
 		ufbxwi_check(ufbxwi_props_rehash(scene, &et->props, desc->num_props), false);
 
 		ufbxwi_for(const ufbxwi_prop_desc, pd, desc->props, desc->num_props) {
-			ufbxwi_prop *prop = ufbxwi_props_add_prop(scene, &et->props, pd->name);
+			ufbxwi_prop *prop = ufbxwi_props_add_prop(scene, &et->props, (ufbxwi_token)pd->name);
 			if (!prop) return false;
 			prop->type = pd->type;
 			prop->value = pd->value_offset;
@@ -7613,7 +7613,7 @@ static ufbxwi_forceinline bool ufbxwi_init_element_type_imp(ufbxw_scene *scene, 
 		ufbxwi_for(const ufbxwi_prop_desc, pd, desc->props, desc->num_props) {
 			if (pd->flags & UFBXWI_PROP_FLAG_EXCLUDE_FROM_TEMPLATE) continue;
 
-			ufbxwi_prop *prop = ufbxwi_props_add_prop(scene, &tmpl_elem->props, pd->name);
+			ufbxwi_prop *prop = ufbxwi_props_add_prop(scene, &tmpl_elem->props, (ufbxwi_token)pd->name);
 			ufbxwi_check(prop, false);
 			prop->type = pd->type;
 			prop->value = ufbxwi_prop_value_type(pd->value_offset) == UFBXWI_PROP_VALUE_DEFAULT ? pd->value_offset : pd->default_offset;
@@ -8015,7 +8015,7 @@ static ufbxw_anim_prop ufbxwi_animate_prop(ufbxw_scene *scene, ufbxw_id id, ufbx
 	ufbxw_anim_prop anim = { ufbxw_create_element(scene, UFBXW_ELEMENT_ANIM_PROP) };
 	ufbxw_set_name(scene, anim.id, anim_name);
 
-	ufbxwi_connect_imp(scene, UFBXW_CONNECTION_ANIM_PROPERTY, anim.id, id, 0, prop, 0);
+	ufbxwi_connect_imp(scene, UFBXW_CONNECTION_ANIM_PROPERTY, anim.id, id, UFBXWI_TOKEN_NONE, prop, 0);
 
 	if (layer.id != 0) {
 		ufbxwi_connect(scene, UFBXW_CONNECTION_ANIM_PROP_LAYER, anim.id, layer.id, 0);
@@ -8050,7 +8050,7 @@ static ufbxw_anim_prop ufbxwi_animate_prop(ufbxw_scene *scene, ufbxw_id id, ufbx
 		p->flags = UFBXW_PROP_FLAG_ANIMATABLE;
 		p->value = ufbxwi_prop_value_field(offsetof(ufbxwi_anim_prop, defaults) + i * sizeof(ufbxw_real));
 
-		ufbxwi_connect_imp(scene, UFBXW_CONNECTION_ANIM_CURVE_PROP, curve.id, anim.id, 0, prop_name, 0);
+		ufbxwi_connect_imp(scene, UFBXW_CONNECTION_ANIM_CURVE_PROP, curve.id, anim.id, UFBXWI_TOKEN_NONE, prop_name, 0);
 	}
 
 	return anim;
