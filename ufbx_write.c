@@ -716,6 +716,7 @@ static ufbxwi_forceinline void ufbxwi_atomic_store(ufbxwi_atomic_u32 *atomic, ui
 {
 	uint32_t prev = ufbxwi_atomic_load_relaxed(atomic);
 	bool ok = ufbxwi_atomic_cas(atomic, prev, value);
+	ufbxwi_ignore(ok);
 	ufbxw_assert(ok);
 }
 
@@ -788,7 +789,7 @@ static bool ufbxwi_mutex_try_lock(ufbxwi_thread_pool *tp, ufbxwi_mutex *mutex)
 	// Happy fast path
 	if (ufbxwi_atomic_cas(&mutex->lockers, 0, 1)) return true;
 
-	for (uint32_t spin = 0; ; spin++) {
+	for (;;) {
 		const uint32_t state = ufbxwi_atomic_load_relaxed(&mutex->lockers);
 		const uint32_t locked = state & 0x1;
 		const uint32_t waiters = state >> 1u;
@@ -849,6 +850,7 @@ static void ufbxwi_mutex_unlock(ufbxwi_thread_pool *tp, ufbxwi_mutex *mutex)
 		const uint32_t locked = state & 0x1;
 		const uint32_t waiters = state >> 1u;
 
+		ufbxwi_ignore(locked);
 		ufbxwi_dev_assert(locked);
 
 		const uint32_t new_state = 0x0 | waiters << 1u;
@@ -2052,8 +2054,6 @@ static ufbxwi_noinline void ufbxwi_find_matches_slow(ufbxwi_deflate_encoder *ud,
 			if (data[match3_pos + 0] == data[read_pos + 0] && data[match3_pos + 1] == data[read_pos + 1] && data[match3_pos + 2] == data[read_pos + 2]) {
 				const uint32_t match_index = ufbxwi_deflate_push_match(ud, read_pos, match3_pos, 3);
 
-				ufbxwi_lz_pos match_end_pos = read_pos + 3;
-
 				read_pos++;
 				for (size_t i = 0; i < 2; i++) {
 					const uint32_t match_hash3 = ufbxwi_deflate_hash3_slow(data + read_pos, data_end, UFBXWI_DEFLATE_HASH3_BITS);
@@ -2211,8 +2211,6 @@ static ufbxwi_noinline void ufbxwi_find_matches_fast(ufbxwi_deflate_encoder *ud,
 		if (match3_pos >= match_limit && end_pos - read_pos >= 3) {
 			if (((ufbxwi_read_u32(data + match3_pos) ^ ufbxwi_read_u32(data + read_pos)) & 0xffffff) == 0) {
 				const uint32_t match_index = ufbxwi_deflate_push_match(ud, read_pos, match3_pos, 3);
-
-				ufbxwi_lz_pos match_end_pos = read_pos + 3;
 
 				read_pos++;
 				for (size_t i = 0; i < 2; i++) {
@@ -2880,6 +2878,7 @@ static ufbxwi_unused ufbxwi_noinline size_t ufbxwi_deflate(ufbxwi_deflate_encode
 
 	ufbxw_deflate_advance_status status = { 0 };
 	ufbxw_deflate_advance_result result = ufbxwi_deflate_encoder_advance(ud, &status, dst, dst_size, src, src_size);
+	ufbxwi_ignore(result);
 	ufbxw_assert(result == UFBXW_DEFLATE_ADVANCE_RESULT_COMPLETED);
 	return status.bytes_written;
 }
@@ -4770,6 +4769,7 @@ static void ufbxwi_set_buffer(ufbxwi_buffer_pool *pool, ufbxw_buffer_id *p_dst, 
 {
 	if (src != 0) {
 		ufbxwi_buffer *buffer = ufbxwi_get_buffer(pool, src);
+		ufbxwi_ignore(buffer);
 		ufbxw_assert(buffer && buffer->refcount > 0);
 	}
 
@@ -4807,7 +4807,6 @@ static bool ufbxwi_make_buffer_owned(ufbxwi_buffer_pool *pool, ufbxw_buffer_id i
 
 static const void *ufbxwi_buffer_get_data(ufbxwi_buffer_pool *pool, ufbxw_buffer_id id)
 {
-	ufbxwi_buffer_type type = ufbxwi_buffer_id_type(id);
 	ufbxwi_buffer *buffer = ufbxwi_get_buffer(pool, id);
 	if (!buffer) return NULL;
 
@@ -4826,7 +4825,6 @@ static const void *ufbxwi_buffer_get_data(ufbxwi_buffer_pool *pool, ufbxw_buffer
 
 ufbxwi_nodiscard static bool ufbxwi_buffer_materialize(ufbxwi_buffer_pool *pool, ufbxw_buffer_id id)
 {
-	ufbxwi_buffer_type type = ufbxwi_buffer_id_type(id);
 	ufbxwi_buffer *buffer = ufbxwi_get_buffer(pool, id);
 	if (!buffer) return false;
 
@@ -6816,6 +6814,7 @@ static bool ufbxwi_init_light(ufbxw_scene *scene, void *data)
 static bool ufbxwi_init_camera(ufbxw_scene *scene, void *data)
 {
 	ufbxwi_camera *camera = (ufbxwi_camera*)data;
+	ufbxwi_ignore(camera);
 	return true;
 }
 
@@ -7197,8 +7196,6 @@ static bool ufbxwi_props_rehash(ufbxw_scene *scene, ufbxwi_props *props, size_t 
 static ufbxwi_prop *ufbxwi_props_find_prop(ufbxwi_props *props, ufbxwi_token token)
 {
 	if (props->count == 0) return NULL;
-
-	ufbxwi_prop *prop = NULL;
 
 	uint32_t mask = props->capacity - 1;
 	uint32_t hash = ufbxwi_hash_token(token);
@@ -7809,6 +7806,7 @@ static bool ufbxwi_disconnect_imp(ufbxw_scene *scene, ufbxw_connection_type type
 
 	bool removed_src = ufbxwi_conn_remove_one(scene, src_type, src_data, dst_id, src_prop, dst_prop);
 	bool removed_dst = ufbxwi_conn_remove_one(scene, dst_type, dst_data, src_id, src_prop, dst_prop);
+	ufbxwi_ignore(removed_dst);
 	ufbxw_assert(removed_src == removed_dst);
 	return removed_src;
 }
@@ -7888,6 +7886,7 @@ static void ufbxwi_disconnect_all_dst(ufbxw_scene *scene, ufbxw_connection_type 
 		void *dst_data = (char*)dst_elem + ufbxwi_conn_offset(info.dst_conn);
 
 		uint64_t dst_bits = dst_elem->conn_bits | (UFBXWI_CONN_BIT_PROPERTY | UFBXWI_CONN_BIT_ELEMENT);
+		ufbxwi_ignore(dst_bits);
 		ufbxw_assert((dst_bits & info.dst_mask) == info.dst_mask);
 
 		ufbxwi_conn_remove_all(scene, dst_type, dst_data, src_id);
@@ -7918,6 +7917,7 @@ static void ufbxwi_disconnect_all_src(ufbxw_scene *scene, ufbxw_connection_type 
 		void *src_data = (char*)src_elem + ufbxwi_conn_offset(info.src_conn);
 
 		uint64_t src_bits = src_elem->conn_bits | (UFBXWI_CONN_BIT_PROPERTY | UFBXWI_CONN_BIT_ELEMENT);
+		ufbxwi_ignore(src_bits);
 		ufbxw_assert((src_bits & info.src_mask) == info.src_mask);
 
 		ufbxwi_conn_remove_all(scene, src_type, src_data, dst_id);
@@ -8211,7 +8211,7 @@ static void ufbxwi_create_defaults(ufbxw_scene *scene)
 	}
 
 	if (!scene->opts.no_default_document) {
-		ufbxw_id id = ufbxw_create_element(scene, UFBXW_ELEMENT_DOCUMENT);
+		ufbxw_create_element(scene, UFBXW_ELEMENT_DOCUMENT);
 	}
 
 	if (!scene->opts.no_default_anim_stack) {
@@ -8757,6 +8757,8 @@ static void ufbxwi_prepare_scene(ufbxw_scene *scene, const ufbxw_prepare_opts *o
 	ufbxwi_check(elements.data);
 
 	size_t real_count = ufbxw_get_elements(scene, elements.data, elements.count);
+	ufbxwi_ignore(element_count);
+	ufbxwi_ignore(real_count);
 	ufbxw_assert(real_count == element_count);
 
 	qsort(elements.data, elements.count, sizeof(ufbxw_id), &ufbxwi_cmp_id);
@@ -8898,7 +8900,7 @@ static void ufbxwi_prepare_scene(ufbxw_scene *scene, const ufbxw_prepare_opts *o
 			if (!node) continue;
 			if (node->attribute != 0) continue;
 
-			ufbxw_bone bone = ufbxw_create_bone(scene, UFBXW_BONE_LIMB_NODE, cluster->node);
+			ufbxw_create_bone(scene, UFBXW_BONE_LIMB_NODE, cluster->node);
 			ufbxwi_check(!ufbxwi_is_fatal(&scene->error));
 		}
 	}
@@ -10560,13 +10562,10 @@ static bool ufbxwi_deflate_buffer(ufbxwi_save_thread_context *tc, ufbxwi_write_c
 	ufbxwi_buffer_type_info type_info = ufbxwi_buffer_type_infos[type];
 
 	size_t buffer_count = input->count;
-	size_t scalar_count = buffer_count * type_info.components;
 	size_t data_size = buffer_count * type_info.size;
 
 	const size_t window_size = tc->opts->deflate_window_size;
 
-	ufbxwi_void_iterator src = { 0 };
-	size_t total_read = 0;
 	size_t total_written = 0;
 
 	size_t dst_size = tc->deflate.begin_fn(tc->deflate.user, data_size);
@@ -10604,7 +10603,6 @@ static bool ufbxwi_deflate_buffer(ufbxwi_save_thread_context *tc, ufbxwi_write_c
 			if (result == UFBXW_DEFLATE_ADVANCE_RESULT_COMPLETED) break;
 		}
 	} else {
-		size_t read_offset = 0;
 		size_t src_buffer_size = window_size * 2;
 		ufbxwi_check(ufbxwi_list_resize_uninit(tc->ator, &tc->tmp_input_buffer, char, src_buffer_size), false);
 
@@ -11171,6 +11169,7 @@ static void ufbxwi_save_props(ufbxwi_save_context *sc, const ufbxwi_element *ele
 		} break;
 		case UFBXW_PROP_DATA_BLOB: {
 			const ufbxw_blob *d = (const ufbxw_blob*)data;
+			ufbxwi_ignore(d);
 			ufbxw_assert(0 && "TODO");
 		} break;
 		case UFBXW_PROP_DATA_USER_INT: {
@@ -11694,7 +11693,6 @@ static void ufbxwi_save_element(ufbxwi_save_context *sc, ufbxwi_element *element
 	ufbxw_element_type type = ufbxwi_id_type(id);
 	const ufbxwi_element_type *et = &scene->element_types.data[element->type_id];
 
-	ufbxwi_token fbx_type = et->fbx_type;
 	ufbxwi_token sub_type = et->sub_type;
 	ufbxwi_token obj_type = et->object_type;
 
@@ -14134,6 +14132,8 @@ ufbxw_abi void ufbxw_skin_deformer_set_dual_quaternion_weights(ufbxw_scene *scen
 
 	size_t index_count = ufbxwi_get_buffer_size(&scene->buffers, indices.id);
 	size_t weights_count = ufbxwi_get_buffer_size(&scene->buffers, weights.id);
+	ufbxwi_ignore(index_count);
+	ufbxwi_ignore(weights_count);
 	ufbxw_assert(index_count == weights_count);
 
 	ufbxwi_set_buffer_from_user(&scene->buffers, &sd->dual_quaternion_indices.id, indices.id);
@@ -14169,6 +14169,8 @@ ufbxw_abi void ufbxw_skin_cluster_set_weights(ufbxw_scene *scene, ufbxw_skin_clu
 
 	size_t index_count = ufbxwi_get_buffer_size(&scene->buffers, indices.id);
 	size_t weights_count = ufbxwi_get_buffer_size(&scene->buffers, weights.id);
+	ufbxwi_ignore(index_count);
+	ufbxwi_ignore(weights_count);
 	ufbxw_assert(index_count == weights_count);
 
 	ufbxwi_set_buffer_from_user(&scene->buffers, &sc->indices.id, indices.id);
@@ -14277,6 +14279,8 @@ ufbxw_abi void ufbxw_blend_shape_set_offsets(ufbxw_scene *scene, ufbxw_blend_sha
 
 	size_t index_count = ufbxwi_get_buffer_size(&scene->buffers, indices.id);
 	size_t offset_count = ufbxwi_get_buffer_size(&scene->buffers, offsets.id);
+	ufbxwi_ignore(index_count);
+	ufbxwi_ignore(offset_count);
 	ufbxw_assert(index_count == offset_count);
 
 	ufbxwi_set_buffer_from_user(&scene->buffers, &bs->indices.id, indices.id);
@@ -15018,6 +15022,7 @@ ufbxw_abi void ufbxw_anim_curve_set_data(ufbxw_scene *scene, ufbxw_anim_curve cu
 
 	size_t num_times = ufbxwi_get_buffer_size(&scene->buffers, data->key_times.id);
 	size_t num_values = ufbxwi_get_buffer_size(&scene->buffers, data->key_values.id);
+	ufbxwi_ignore(num_values);
 
 	if (data->key_times.id && data->key_values.id) {
 		ufbxw_assert(num_times == num_values);
