@@ -12314,41 +12314,55 @@ static bool ufbxwi_open_file_write(ufbxw_write_stream *stream, const char *path,
 		}
 	}
 
-	// Convert UTF-8 to UTF-16 but allow stray surrogate pairs as the Windows
+	// Convert UTF-8 to UTF-16 but allow lone surrogates as the Windows
 	// file system encoding allows them as well.
+	size_t index = 0;
 	size_t wlen = 0;
-	for (size_t i = 0; i < path_len; ) {
-		uint32_t code = UINT32_MAX;
-		char c = path[i++];
+	while (index < path_len) {
+		uint8_t c = (uint8_t)path[index];
+		size_t left = path_len - index;
+
 		if ((c & 0x80) == 0) {
-			code = (uint32_t)c;
-		} else if ((c & 0xe0) == 0xc0) {
-			code = (uint32_t)(c & 0x1f);
-			if (i < path_len) code = code << 6 | (uint32_t)(path[i++] & 0x3f);
-		} else if ((c & 0xf0) == 0xe0) {
-			code = (uint32_t)(c & 0x0f);
-			if (i < path_len) code = code << 6 | (uint32_t)(path[i++] & 0x3f);
-			if (i < path_len) code = code << 6 | (uint32_t)(path[i++] & 0x3f);
-		} else if ((c & 0xf8) == 0xf0) {
-			code = (uint32_t)(c & 0x07);
-			if (i < path_len) code = code << 6 | (uint32_t)(path[i++] & 0x3f);
-			if (i < path_len) code = code << 6 | (uint32_t)(path[i++] & 0x3f);
-			if (i < path_len) code = code << 6 | (uint32_t)(path[i++] & 0x3f);
-		} else {
-			if (wpath != wpath_buf) {
-				ufbxw_free(wpath, alloc_size);
+			wpath[wlen++] = (wchar_t)c;
+			index += 1;
+			continue;
+		} else if ((c & 0xe0) == 0xc0 && left >= 2) {
+			uint8_t t0 = (uint8_t)path[index + 1];
+			uint32_t code = (uint32_t)c << 8 | (uint32_t)t0;
+			if ((code & 0xc0) == 0x80 && code >= 0xc280) {
+				wpath[wlen++] = (wchar_t)((c & 0x1f) << 6 | (t0 & 0x3f));
+				index += 2;
+				continue;
 			}
-			ufbxwi_failf(error, UFBXW_ERROR_FILE_OPEN_FAILED, "Invalid UTF-8");
-			return false;
+		} else if ((c & 0xf0) == 0xe0 && left >= 3) {
+			uint8_t t0 = (uint8_t)path[index + 1], t1 = (uint8_t)path[index + 2];
+			uint32_t code = (uint32_t)c << 16 | (uint32_t)t0 << 8 | (uint32_t)t1;
+			if ((code & 0xc0c0) == 0x8080 && code >= 0xe0a080) {
+				wpath[wlen++] = (wchar_t)((c & 0x0f) << 12 | (t0 & 0x3f) << 6 | (t1 & 0x3f));
+				index += 3;
+				continue;
+			}
+		} else if ((c & 0xf8) == 0xf0 && left >= 4) {
+			uint8_t t0 = (uint8_t)path[index + 1], t1 = (uint8_t)path[index + 2], t2 = (uint8_t)path[index + 3];
+			uint32_t code = (uint32_t)c << 24 | (uint32_t)t0 << 16 | (uint32_t)t1 << 8 | (uint32_t)t2;
+			if ((code & 0xc0c0c0) == 0x808080 && code >= 0xf0908080u && code <= 0xf48fbfbfu) {
+				uint32_t value = (uint32_t)((c & 0x07) << 18 | (t0 & 0x3f) << 12 | (t1 & 0x3f) << 6 | (t2 & 0x3f));
+				value -= 0x10000;
+				wpath[wlen++] = (wchar_t)(0xd800 + (value >> 10));
+				wpath[wlen++] = (wchar_t)(0xdc00 + (value & 0x3ff));
+				index += 4;
+				continue;
+			}
 		}
 
-		if (code < 0x10000) {
-			wpath[wlen++] = (wchar_t)code;
-		} else {
-			code -= 0x10000;
-			wpath[wlen++] = (wchar_t)(0xd800 + (code >> 10));
-			wpath[wlen++] = (wchar_t)(0xdc00 + (code & 0x3ff));
+		break;
+	}
+	if (index != path_len) {
+		if (wpath != wpath_buf) {
+			ufbxw_free(wpath, alloc_size);
 		}
+		ufbxwi_failf(error, UFBXW_ERROR_FILE_OPEN_FAILED, "Invalid UTF-8");
+		return false;
 	}
 	wpath[wlen] = 0;
 

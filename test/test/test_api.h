@@ -171,10 +171,18 @@ UFBXWT_TEST(write_to_file_invalid_utf8)
 #if !defined(UFBXW_STANDARD_C) && defined(_WIN32)
 	ufbxw_write_stream stream = { 0 };
 	ufbxw_error error;
-	const char path[] = "output/write_file_\xff.fbx";
-	ufbxwt_assert(!ufbxw_open_file_write(&stream, path, sizeof(path) - 1, &error));
-	ufbxwt_assert(error.type == UFBXW_ERROR_FILE_OPEN_FAILED);
-	ufbxwt_assert(strstr(error.description, "Invalid UTF-8"));
+	const char *paths[] = {
+		"output/write_file_\xff.fbx",
+		"output/write_file_\xe2\x82",
+		"output/write_file_\xe2\x41\xac.fbx",
+		"output/write_file_\xe0\x80\xaf.fbx",
+		"output/write_file_\xf4\x90\x80\x80.fbx",
+	};
+	for (size_t i = 0; i < sizeof(paths) / sizeof(paths[0]); i++) {
+		ufbxwt_assert(!ufbxw_open_file_write(&stream, paths[i], strlen(paths[i]), &error));
+		ufbxwt_assert(error.type == UFBXW_ERROR_FILE_OPEN_FAILED);
+		ufbxwt_assert(strstr(error.description, "Invalid UTF-8"));
+	}
 
 	char long_path[1200];
 	memset(long_path, 'x', sizeof(long_path));
