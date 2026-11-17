@@ -73,7 +73,7 @@ if(USE_EXTRA AND USE_FMTLIB)
     list(APPEND SRC_EXTRA "../../extra/ufbxw_fmtlib.h" "ufbxw_fmtlib.cpp")
 endif()
 
-if(USE_EXTRA AND USE_TO_CHARS)
+if(USE_TO_CHARS)
     target_compile_definitions(ufbxw_extra PUBLIC UFBXWT_HAS_TO_CHARS=1)
 
     list(APPEND SRC_EXTRA "../../extra/ufbxw_to_chars.h" "ufbxw_to_chars.cpp")
@@ -115,7 +115,7 @@ if(USE_EXTRA AND USE_ZMIJ)
     )
 endif()
 
-if(USE_EXTRA AND USE_CPP_THREADS)
+if(USE_CPP_THREADS)
     target_compile_definitions(ufbxw_extra PUBLIC UFBXWT_HAS_CPP_THREADS=1)
 
     list(APPEND SRC_EXTRA "../../extra/ufbxw_cpp_threads.h" "ufbxw_cpp_threads.cpp")
