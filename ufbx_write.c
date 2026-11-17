@@ -676,12 +676,12 @@ typedef uint32_t ufbxwi_task_id;
 	static ufbxwi_forceinline bool ufbxwi_atomic_cas(ufbxwi_atomic_u32 *atomic, uint32_t expected, uint32_t value)
 	{
 		long ref = _InterlockedCompareExchange((volatile long*)&atomic->value, (long)value, (long)expected);
-		return ref == expected;
+		return (uint32_t)ref == expected;
 	}
 
 	static ufbxwi_forceinline uint32_t ufbxwi_atomic_add(ufbxwi_atomic_u32 *atomic, uint32_t value)
 	{
-		return _InterlockedExchangeAdd((volatile long*)&atomic->value, (long)value);
+		return (uint32_t)_InterlockedExchangeAdd((volatile long*)&atomic->value, (long)value);
 	}
 
 	static ufbxwi_forceinline uint32_t ufbxwi_atomic_load_relaxed(ufbxwi_atomic_u32 *atomic)
@@ -1689,7 +1689,7 @@ void ufbxwi_build_huffman(ufbxwi_huff_symbol *symbols, const uint16_t *counts, u
 
 		for (uint32_t i = 0; i < num_symbols; i++) {
 			uint32_t len = symbols[i].length;
-			symbols[i].bits = len ? ufbxwi_bit_reverse(length_codes[len]++, len) : 0;
+			symbols[i].bits = (uint16_t)(len ? ufbxwi_bit_reverse(length_codes[len]++, len) : 0);
 		}
 
 		break;
@@ -1699,8 +1699,8 @@ void ufbxwi_build_huffman(ufbxwi_huff_symbol *symbols, const uint16_t *counts, u
 static ufbxwi_noinline void ufbxwi_build_static_huffman(ufbxwi_huff_symbol *huff, uint32_t count, uint32_t bits, uint32_t code_begin)
 {
 	ufbxwi_nounroll for (uint32_t i = 0; i < count; i++) {
-		huff[i].length = bits;
-		huff[i].bits = ufbxwi_bit_reverse(code_begin + i, bits);
+		huff[i].length = (uint16_t)bits;
+		huff[i].bits = (uint16_t)ufbxwi_bit_reverse(code_begin + i, bits);
 	}
 }
 
@@ -1845,7 +1845,7 @@ static ufbxwi_noinline void ufbxwi_deflate_encoder_reset_imp(ufbxwi_deflate_enco
 
 	// TODO: Vectorize
 	for (size_t i = 0; i < (1 << UFBXWI_DEFLATE_HASH3_BITS); i++) {
-		ud->hash3_tab[i] = -0x10000;
+		ud->hash3_tab[i] = (uint32_t)-0x10000;
 	}
 	for (size_t i = 0; i < (1 << UFBXWI_DEFLATE_HASH4_BITS); i++) {
 		ud->hash4_tab[i] = -0x10000;
@@ -1889,7 +1889,7 @@ static ufbxwi_forceinline uint32_t ufbxwi_deflate_length_symbol(int32_t length)
 
 static ufbxwi_forceinline uint32_t ufbxwi_deflate_dist_symbol(int32_t distance)
 {
-	uint32_t v = distance - 1;
+	uint32_t v = (uint32_t)(distance - 1);
 	if (v < 2) return v;
 
 	uint32_t log_v = 31 - 1 - ufbxwi_lzcnt32((uint32_t)v);
@@ -1901,17 +1901,17 @@ static ufbxwi_forceinline uint32_t ufbxwi_deflate_push_match(ufbxwi_deflate_enco
 	const uint32_t match_index = ud->num_matches++;
 	ufbxwi_lz_match *match = &ud->matches[match_index];
 	match->literal_count = (uint16_t)(pos - ud->prev_match_end_pos);
-	ud->prev_match_end_pos = pos + length;
+	ud->prev_match_end_pos = pos + (ufbxwi_lz_pos)length;
 
 	const int32_t distance = (int32_t)(pos - match_pos);
-	const uint32_t length_sym = ufbxwi_deflate_length_symbol(length);
+	const uint32_t length_sym = ufbxwi_deflate_length_symbol((int32_t)length);
 	const uint32_t dist_sym = ufbxwi_deflate_dist_symbol(distance);
 
 	ud->litlen_count[length_sym + 256]++;
 	ud->dist_count[dist_sym]++;
 
 	match->length = (uint16_t)length;
-	match->dist = (int16_t)distance;
+	match->dist = (uint16_t)distance;
 	match->length_sym = (uint8_t)length_sym;
 	match->dist_sym = (uint8_t)dist_sym;
 	return match_index;
@@ -1973,11 +1973,11 @@ static ufbxwi_noinline void ufbxwi_find_matches_slow(ufbxwi_deflate_encoder *ud,
 		ufbxwi_lz_pos match3_pos = (ufbxwi_lz_pos)ud->hash3_tab[hash3];
 
 		ufbxwi_lz_pos match_pos = (ufbxwi_lz_pos)ud->hash4_tab[hash4];
-		ud->hash3_tab[hash3] = (int32_t)read_pos;
+		ud->hash3_tab[hash3] = (uint32_t)read_pos;
 		ud->hash4_tab[hash4] = (int32_t)read_pos;
-		ud->hash4_chain[read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
+		ud->hash4_chain[(uint32_t)read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
 
-		ufbxwi_lz_pos next_pos = match_pos - ud->hash4_chain[match_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)];
+		ufbxwi_lz_pos next_pos = match_pos - ud->hash4_chain[(uint32_t)match_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)];
 
 		const ufbxwi_lz_pos match_limit = read_pos - 0x8000;
 
@@ -2006,7 +2006,7 @@ static ufbxwi_noinline void ufbxwi_find_matches_slow(ufbxwi_deflate_encoder *ud,
 					break;
 				}
 
-				next_pos = next_pos - ud->hash4_chain[next_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)];
+				next_pos = next_pos - ud->hash4_chain[(uint32_t)next_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)];
 
 				const char *data_match = data + match_pos;
 
@@ -2025,7 +2025,7 @@ static ufbxwi_noinline void ufbxwi_find_matches_slow(ufbxwi_deflate_encoder *ud,
 			}
 
 			if (best_len >= 4) {
-				const uint32_t match_index = ufbxwi_deflate_push_match(ud, read_pos, best_pos, best_len);
+				const uint32_t match_index = ufbxwi_deflate_push_match(ud, read_pos, best_pos, (uint32_t)best_len);
 
 				const ufbxwi_lz_pos match_end_pos = read_pos + best_len;
 
@@ -2034,9 +2034,9 @@ static ufbxwi_noinline void ufbxwi_find_matches_slow(ufbxwi_deflate_encoder *ud,
 					const uint32_t hash3 = ufbxwi_deflate_hash3_slow(data + read_pos, data_end, UFBXWI_DEFLATE_HASH3_BITS);
 					const uint32_t hash4 = ufbxwi_deflate_hash4_slow(data + read_pos, data_end, UFBXWI_DEFLATE_HASH4_BITS);
 					match_pos = (ufbxwi_lz_pos)ud->hash4_tab[hash4];
-					ud->hash3_tab[hash3] = (int32_t)read_pos;
+					ud->hash3_tab[hash3] = (uint32_t)read_pos;
 					ud->hash4_tab[hash4] = (int32_t)read_pos;
-					ud->hash4_chain[read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
+					ud->hash4_chain[(uint32_t)read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
 					read_pos++;
 				}
 
@@ -2059,9 +2059,9 @@ static ufbxwi_noinline void ufbxwi_find_matches_slow(ufbxwi_deflate_encoder *ud,
 					const uint32_t hash3 = ufbxwi_deflate_hash3_slow(data + read_pos, data_end, UFBXWI_DEFLATE_HASH3_BITS);
 					const uint32_t hash4 = ufbxwi_deflate_hash4_slow(data + read_pos, data_end, UFBXWI_DEFLATE_HASH4_BITS);
 					match_pos = (ufbxwi_lz_pos)ud->hash4_tab[hash4];
-					ud->hash3_tab[hash3] = (int32_t)read_pos;
+					ud->hash3_tab[hash3] = (uint32_t)read_pos;
 					ud->hash4_tab[hash4] = (int32_t)read_pos;
-					ud->hash4_chain[read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
+					ud->hash4_chain[(uint32_t)read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
 					read_pos++;
 				}
 
@@ -2100,14 +2100,14 @@ static ufbxwi_forceinline int32_t ufbxwi_lz_match_length_fast(const char *data, 
 	do {
 		delta = ufbxwi_lz_word_read(data + len) ^ ufbxwi_lz_word_read(match + len);
 		if (delta != 0) break;
-		len += sizeof(ufbxwi_lz_word);
+		len += (int32_t)sizeof(ufbxwi_lz_word);
 
 		delta = ufbxwi_lz_word_read(data + len) ^ ufbxwi_lz_word_read(match + len);
 		if (delta != 0) break;
-		len += sizeof(ufbxwi_lz_word);
+		len += (int32_t)sizeof(ufbxwi_lz_word);
 	} while (len < max_len);
 
-	len += ufbxwi_lz_word_low_zero_bytes(delta);
+	len += (int32_t)ufbxwi_lz_word_low_zero_bytes(delta);
 	return len < max_len ? len : max_len;
 }
 
@@ -2130,11 +2130,11 @@ static ufbxwi_noinline void ufbxwi_find_matches_fast(ufbxwi_deflate_encoder *ud,
 		next_hash4 = ufbxwi_deflate_hash4_fast(data + read_pos + 1, UFBXWI_DEFLATE_HASH4_BITS);
 		next_match_pos = (ufbxwi_lz_pos)ud->hash4_tab[next_hash4];
 
-		ud->hash3_tab[hash3] = (int32_t)read_pos;
+		ud->hash3_tab[hash3] = (uint32_t)read_pos;
 		ud->hash4_tab[hash4] = (int32_t)read_pos;
-		ud->hash4_chain[read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
+		ud->hash4_chain[(uint32_t)read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
 
-		ufbxwi_lz_pos next_pos = match_pos - ud->hash4_chain[match_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)];
+		ufbxwi_lz_pos next_pos = match_pos - ud->hash4_chain[(uint32_t)match_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)];
 
 		const ufbxwi_lz_pos match_limit = read_pos - 0x8000;
 
@@ -2144,7 +2144,7 @@ static ufbxwi_noinline void ufbxwi_find_matches_fast(ufbxwi_deflate_encoder *ud,
 		const char *data_read = data + read_pos;
 
 		if (match_pos >= match_limit) {
-			uint32_t scan_left = ud->max_scan;
+			uint32_t scan_left = (uint32_t)ud->max_scan;
 
 			best_len = ufbxwi_lz_match_length_fast(data + match_pos, data_read, 258);
 			best_pos = match_pos;
@@ -2159,7 +2159,7 @@ static ufbxwi_noinline void ufbxwi_find_matches_fast(ufbxwi_deflate_encoder *ud,
 					break;
 				}
 
-				next_pos = next_pos - ud->hash4_chain[next_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)];
+				next_pos = next_pos - ud->hash4_chain[(uint32_t)next_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)];
 
 				const char *data_match = data + match_pos;
 
@@ -2178,7 +2178,7 @@ static ufbxwi_noinline void ufbxwi_find_matches_fast(ufbxwi_deflate_encoder *ud,
 			}
 
 			if (best_len >= 4) {
-				const uint32_t match_index = ufbxwi_deflate_push_match(ud, read_pos, best_pos, best_len);
+				const uint32_t match_index = ufbxwi_deflate_push_match(ud, read_pos, best_pos, (uint32_t)best_len);
 
 				ufbxwi_lz_pos match_end_pos = read_pos + best_len;
 
@@ -2193,9 +2193,9 @@ static ufbxwi_noinline void ufbxwi_find_matches_fast(ufbxwi_deflate_encoder *ud,
 					next_hash4 = ufbxwi_deflate_hash4_fast(data + read_pos + 1, UFBXWI_DEFLATE_HASH4_BITS);
 					next_match_pos = (ufbxwi_lz_pos)ud->hash4_tab[next_hash4];
 
-					ud->hash3_tab[hash3] = (int32_t)read_pos;
+					ud->hash3_tab[hash3] = (uint32_t)read_pos;
 					ud->hash4_tab[hash4] = (int32_t)read_pos;
-					ud->hash4_chain[read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
+					ud->hash4_chain[(uint32_t)read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
 
 					read_pos++;
 				}
@@ -2224,9 +2224,9 @@ static ufbxwi_noinline void ufbxwi_find_matches_fast(ufbxwi_deflate_encoder *ud,
 					next_hash4 = ufbxwi_deflate_hash4_fast(data + read_pos + 1, UFBXWI_DEFLATE_HASH4_BITS);
 					next_match_pos = (ufbxwi_lz_pos)ud->hash4_tab[next_hash4];
 
-					ud->hash3_tab[hash3] = (int32_t)read_pos;
+					ud->hash3_tab[hash3] = (uint32_t)read_pos;
 					ud->hash4_tab[hash4] = (int32_t)read_pos;
-					ud->hash4_chain[read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
+					ud->hash4_chain[(uint32_t)read_pos & (UFBXWI_DEFLATE_WINDOW_SIZE - 1)] = ufbxwi_lz_saturate_chain_offset(read_pos - match_pos);
 					read_pos++;
 				}
 
@@ -2413,8 +2413,8 @@ static ufbxwi_noinline void ufbxwi_deflate_flush_matches(ufbxwi_deflate_encoder 
 		if (match.length_sym > 0) {
 			const uint32_t len_extra_bits = len_info & 0xf, len_extra_base = len_info >> 4;
 			const uint32_t dist_extra_bits = dist_info & 0xf, dist_extra_base = dist_info >> 4;
-			const uint32_t len_extra = (match.length - len_extra_base) & ((1 << len_extra_bits) - 1);
-			const uint32_t dist_extra = (match.dist - dist_extra_base) & ((1 << dist_extra_bits) - 1);
+			const uint32_t len_extra = (match.length - len_extra_base) & (uint32_t)((1 << len_extra_bits) - 1);
+			const uint32_t dist_extra = (match.dist - dist_extra_base) & (uint32_t)((1 << dist_extra_bits) - 1);
 
 			ufbxwi_deflate_push_sym(bits, num_bits, huff_litlen[match.length_sym + 256]);
 			ufbxwi_deflate_push_bits(bits, num_bits, len_extra, len_extra_bits);
@@ -2495,7 +2495,7 @@ static ufbxwi_noinline void ufbxwi_deflate_flush_uncompressed(ufbxwi_deflate_enc
 		dst += num_bytes;
 
 		ud->dst_data = dst;
-		ud->encode_pos += num_bytes;
+		ud->encode_pos += (ufbxwi_lz_pos)num_bytes;
 	}
 }
 
@@ -2996,8 +2996,8 @@ static bool ufbxwi_task_complete(ufbxwi_task_queue *tq, ufbxwi_task_id task_id, 
 {
 	ufbxwi_dev_assert(tq->enabled);
 
-	const uint32_t slot_ix = task_id % tq->num_slots;
-	const uint32_t generation = task_id / tq->num_slots;
+	const uint32_t slot_ix = (uint32_t)(task_id % tq->num_slots);
+	const uint32_t generation = (uint32_t)(task_id / tq->num_slots);
 	ufbxwi_task_slot *slot = &tq->slots[slot_ix];
 
 	if (ufbxwi_atomic_load_acquire(&slot->generation) > generation) {
@@ -3034,8 +3034,8 @@ static bool ufbxwi_task_get_completed(ufbxwi_task_queue *tq, ufbxwi_task_id task
 {
 	ufbxwi_dev_assert(tq->enabled);
 
-	const uint32_t slot_ix = task_id % tq->num_slots;
-	const uint32_t generation = task_id / tq->num_slots;
+	const uint32_t slot_ix = (uint32_t)(task_id % tq->num_slots);
+	const uint32_t generation = (uint32_t)(task_id / tq->num_slots);
 	ufbxwi_task_slot *slot = &tq->slots[slot_ix];
 	return ufbxwi_atomic_load_acquire(&slot->generation) > generation;
 }
@@ -3129,10 +3129,10 @@ static ufbxwi_task_id ufbxwi_task_push(ufbxwi_task_queue *tq, ufbxwi_task_fn *fn
 
 	// Wait until the previous task in this slot is completed.
 	if (task_id >= tq->num_slots) {
-		ufbxwi_task_complete(tq, task_id - tq->num_slots, context, true);
+		ufbxwi_task_complete(tq, (ufbxwi_task_id)(task_id - tq->num_slots), context, true);
 	}
 
-	const uint32_t slot_ix = task_id % tq->num_slots;
+	const uint32_t slot_ix = (uint32_t)(task_id % tq->num_slots);
 	ufbxwi_task_slot *slot = &tq->slots[slot_ix];
 	slot->task.fn = fn;
 	slot->task.user = user;
@@ -3154,7 +3154,7 @@ static void ufbxwi_task_queue_free(ufbxwi_task_queue *tq, void *context)
 	// Wait that all tasks are completed
 	// TODO: This could be optimized
 	// TODO: We might not even need to do this
-	uint32_t task_start = tq->write_index >= tq->num_slots ? tq->write_index - tq->num_slots : 0;
+	uint32_t task_start = (uint32_t)(tq->write_index >= tq->num_slots ? tq->write_index - tq->num_slots : 0);
 	if (task_start == 0) {
 		task_start = 1;
 	}
@@ -4077,7 +4077,7 @@ bool ufbxwi_string_pool_rehash(ufbxwi_string_pool *pool)
 		// TODO: Better hashing
 		uint32_t index = entry->hash;
 		for (;;) {
-			uint32_t slot = index & (capacity - 1);
+			uint32_t slot = (uint32_t)(index & (capacity - 1));
 			if (new_entries[slot].hash == 0) {
 				new_entries[slot] = *entry;
 				break;
@@ -4797,7 +4797,7 @@ static bool ufbxwi_make_buffer_owned(ufbxwi_buffer_pool *pool, ufbxw_buffer_id i
 	}
 
 	ufbxwi_reset_buffer(pool, buffer);
-	buffer->flags &= ~UFBXWI_BUFFER_FLAG_TEMPORARY;
+	buffer->flags &= ~(uint32_t)UFBXWI_BUFFER_FLAG_TEMPORARY;
 	buffer->state = UFBXWI_BUFFER_STATE_OWNED;
 	buffer->data.owned.data = data;
 	buffer->data.owned.alloc_size = alloc_size;
@@ -6695,7 +6695,7 @@ static bool ufbxwi_conn_collect_ids(ufbxw_scene *scene, ufbxwi_id_list *ids, ufb
 				prev = id;
 			}
 		}
-		ids->count = dst - ids->data;
+		ids->count = (size_t)(dst - ids->data);
 	}
 
 	return true;
@@ -7175,7 +7175,7 @@ static bool ufbxwi_props_rehash(ufbxw_scene *scene, ufbxwi_props *props, size_t 
 	uint32_t mask = new_capacity - 1;
 	for (size_t i = 0; i < old_capacity; i++) {
 		ufbxwi_token token = old_slots[i].token;
-		if (token == 0 || token == ~0u) continue;
+		if (token == 0 || (uint32_t)token == ~0u) continue;
 
 		uint32_t hash = ufbxwi_hash_token(token);
 		for (uint32_t scan = 0; ; scan++) {
@@ -7238,7 +7238,7 @@ static ufbxwi_prop *ufbxwi_props_add_prop(ufbxw_scene *scene, ufbxwi_props *prop
 
 	if (prop->token == 0) {
 		prop->token = token;
-		prop->order = ++props->order_counter;
+		prop->order = (uint16_t)(++props->order_counter);
 		props->count++;
 	}
 
@@ -7415,7 +7415,7 @@ static ufbxwi_prop *ufbxwi_element_add_prop(ufbxw_scene *scene, ufbxwi_element *
 			if (prop) {
 				*new_prop = *prop;
 			} else {
-				new_prop->type = type;
+				new_prop->type = (uint16_t)type;
 			}
 			new_prop->value = value;
 			prop = new_prop;
@@ -7429,7 +7429,7 @@ static ufbxwi_prop *ufbxwi_element_add_prop(ufbxw_scene *scene, ufbxwi_element *
 			ufbxwi_prop_value value = ufbxwi_element_add_prop_data(scene, element, data_type);
 			ufbxwi_check(value, NULL);
 			prop->value = value;
-			prop->type = type;
+			prop->type = (uint16_t)type;
 		} else {
 			// TODO: Is this even a good check?
 			return NULL;
@@ -7478,7 +7478,7 @@ static ufbxwi_noinline bool ufbxwi_cast_value(void *dst, const void *src, ufbxw_
 			break;
 		}
 	} else if (dst_type == UFBXW_PROP_DATA_INT64) {
-		uint64_t *d = (uint64_t*)dst;
+		int64_t *d = (int64_t*)dst;
 		switch (src_type) {
 		case UFBXW_PROP_DATA_BOOL:
 			*d = *(const bool*)src ? 1 : 0;
@@ -8604,16 +8604,16 @@ static void ufbxwi_generate_indices(ufbxw_scene *scene, ufbxw_mesh_attribute_des
 		// TODO: Better hashing
 		uint32_t slot = hash;
 		for (;;) {
-			slot = slot & (hash_count - 1);
+			slot = (uint32_t)(slot & (hash_count - 1));
 			if (hashes[slot].hash == hash) {
 				int32_t index = hashes[slot].index;
-				if (!memcmp((const char*)values.data + index * value_size, value, value_size)) {
+				if (!memcmp((const char*)values.data + (size_t)index * value_size, value, value_size)) {
 					indices.data[i] = index;
 					break;
 				}
 			} else if (hashes[slot].hash == 0) {
 				int32_t index = (int32_t)value_count++;
-				memcpy((char*)values.data + index * value_size, value, value_size);
+				memcpy((char*)values.data + (size_t)index * value_size, value, value_size);
 				indices.data[i] = index;
 				hashes[slot].hash = hash;
 				hashes[slot].index = index;
@@ -9007,7 +9007,7 @@ typedef struct ufbxwi_write_chunk_part ufbxwi_write_chunk_part;
 struct ufbxwi_write_chunk_part {
 	// Actual data for this part, suballocated from `buffer`.
 	void *data;
-	uint32_t size;
+	size_t size;
 
 	// Reusable memory buffer that this part uses.
 	ufbxwi_write_buffer *buffer;
@@ -10082,7 +10082,7 @@ static ufbxwi_noinline bool ufbxwi_ascii_write_array_data(ufbxwi_save_thread_con
 
 	ufbxwi_line_buffer line_temp_buffer;
 
-	size_t line_elems = UFBXWI_ASCII_LINE_MAX_SCALARS / type_info.components;
+	size_t line_elems = (size_t)(UFBXWI_ASCII_LINE_MAX_SCALARS / type_info.components);
 	size_t line_scalars = line_elems * type_info.components;
 
 	size_t scalar_size = ufbxwi_buffer_type_infos[scalar_type].size;
@@ -10208,7 +10208,7 @@ static void ufbxwi_ascii_dom_write_array(ufbxwi_save_context *sc, const char *ta
 	ufbxwi_ascii_indent(sc);
 	ufbxwi_write(sc, "a: ", 3);
 
-	ufbxwi_buffer_type scalar_type = type_info.scalar_type;
+	ufbxwi_buffer_type scalar_type = (ufbxwi_buffer_type)type_info.scalar_type;
 	if ((type_info.flags & UFBXWI_BUFFER_TYPE_FLAG_ASCII_INT) != 0 && sc->opts.version >= 7200) {
 		scalar_type = UFBXWI_BUFFER_TYPE_INT;
 	}
@@ -10870,16 +10870,16 @@ static const char ufbxwi_binary_footer_data[] = "\xf8\x5a\x8c\x6a\xde\xf5\xd9\x7
 
 static void ufbxwi_binary_fileid_magic(char magic[16], const char *creation_time)
 {
-	ufbxwi_nounroll for (size_t i = 0; i < 16; i++) magic[i] = creation_time[ufbxwi_binary_magic_order[i]];
+	ufbxwi_nounroll for (size_t i = 0; i < 16; i++) magic[i] = creation_time[(uint8_t)ufbxwi_binary_magic_order[i]];
 	ufbxwi_nounroll for (size_t i = 1; i < 16; i++) magic[i] ^= magic[i - 1];
 	ufbxwi_nounroll for (size_t i = 0; i < 16; i++) magic[i] ^= ufbxwi_binary_fileid_key[i];
 }
 
 static void ufbxwi_binary_footer_magic(char magic[16], const char *creation_time)
 {
-	ufbxwi_nounroll for (size_t i = 0; i < 16; i++) magic[i] = creation_time[ufbxwi_binary_magic_order[i]];
+	ufbxwi_nounroll for (size_t i = 0; i < 16; i++) magic[i] = creation_time[(uint8_t)ufbxwi_binary_magic_order[i]];
 	ufbxwi_nounroll for (size_t i = 2; i < 16; i++) magic[i] ^= magic[i - 2];
-	ufbxwi_nounroll for (size_t i = 0; i < 16; i++) magic[i] ^= creation_time[ufbxwi_binary_magic_order[i]];
+	ufbxwi_nounroll for (size_t i = 0; i < 16; i++) magic[i] ^= creation_time[(uint8_t)ufbxwi_binary_magic_order[i]];
 	ufbxwi_nounroll for (size_t i = 1; i < 16; i++) magic[i] ^= magic[i - 1];
 	ufbxwi_nounroll for (size_t i = 0; i < 16; i++) magic[i] ^= ufbxwi_binary_footer_key[i];
 }
@@ -11034,14 +11034,14 @@ static void ufbxwi_save_props(ufbxwi_save_context *sc, const ufbxwi_element *ele
 		ufbxwi_prop *dst_prop = props;
 
 		ufbxwi_for(const ufbxwi_prop, prop, element->props.props, element->props.capacity) {
-			if (prop->token == 0 || prop->token == ~0u) continue;
+			if (prop->token == 0 || (uint32_t)prop->token == ~0u) continue;
 			*dst_prop = *prop;
 			dst_prop++;
 		}
 
 		if (default_props) {
 			ufbxwi_for(const ufbxwi_prop, prop, default_props->props, default_props->capacity) {
-				if (prop->token == 0 || prop->token == ~0u) continue;
+				if (prop->token == 0 || (uint32_t)prop->token == ~0u) continue;
 				*dst_prop = *prop;
 				dst_prop->flags |= UFBXWI_PROP_FLAG_TEMP_DEFAULT;
 				dst_prop++;
@@ -11050,14 +11050,14 @@ static void ufbxwi_save_props(ufbxwi_save_context *sc, const ufbxwi_element *ele
 
 		if (tmpl) {
 			ufbxwi_for(const ufbxwi_prop, prop, tmpl->props.props, tmpl->props.capacity) {
-				if (prop->token == 0 || prop->token == ~0u) continue;
+				if (prop->token == 0 || (uint32_t)prop->token == ~0u) continue;
 				*dst_prop = *prop;
 				dst_prop->flags |= UFBXWI_PROP_FLAG_TEMP_TEMPLATE;
 				dst_prop++;
 			}
 		}
 
-		ufbxw_assert(dst_prop - props == prop_count);
+		ufbxw_assert((size_t)(dst_prop - props) == prop_count);
 	}
 
 	// TODO: Better sort here
@@ -11265,9 +11265,9 @@ static size_t ufbxwi_stream_polygon_vertex_index(void *user, int32_t *dst, size_
 			// TODO: Failure
 			ufbxw_assert(read_count == to_read);
 
-			stream->face_offset_buffer_offset += read_count;
+			stream->face_offset_buffer_offset += (uint32_t)read_count;
 			stream->face_offset_tmp_pos = 0;
-			stream->face_offset_tmp_length = read_count;
+			stream->face_offset_tmp_length = (uint32_t)read_count;
 		}
 
 		int32_t ix = stream->face_offset_tmp[stream->face_offset_tmp_pos] - 1;
@@ -11635,10 +11635,10 @@ static void ufbxwi_save_anim_curve_keys(ufbxwi_save_context *sc, ufbxwi_element 
 		attr.packed_weight = ufbxwi_pack_weight(weight_right) | ufbxwi_pack_weight(weight_next_left) << 16;
 		attr.packed_velocity = 0;
 
-		if (attr_count > 0 && key_flags[attr_count - 1] == flags && !memcmp(&key_attrs[attr_count - 1], &attr, sizeof(ufbxwi_key_attr))) {
+		if (attr_count > 0 && (uint32_t)key_flags[attr_count - 1] == flags && !memcmp(&key_attrs[attr_count - 1], &attr, sizeof(ufbxwi_key_attr))) {
 			key_refcounts[attr_count - 1]++;
 		} else {
-			key_flags[attr_count] = flags;
+			key_flags[attr_count] = (int32_t)flags;
 			key_attrs[attr_count] = attr;
 			key_refcounts[attr_count] = 1;
 			attr_count++;
@@ -15067,7 +15067,7 @@ ufbxw_abi void ufbxw_scene_set_coordinate_axes(ufbxw_scene *scene, ufbxw_coordin
 
 ufbxw_abi ufbxw_coordinate_axes ufbxw_scene_get_coordinate_axes(ufbxw_scene *scene)
 {
-	ufbxw_coordinate_axes axes = { 0 };
+	ufbxw_coordinate_axes axes = { (ufbxw_coordinate_axis)0 };
 
 	ufbxwi_global_settings *gs = ufbxwi_get_global_settings_by_id(scene, scene->global_settings_id);
 	if (!gs) return axes;
@@ -15197,7 +15197,7 @@ ufbxw_abi void ufbxw_validate_scene(const ufbxw_scene *scene)
 
 ufbxw_abi bool ufbxw_open_file_write(ufbxw_write_stream *stream, const char *path, size_t path_len, ufbxw_error *error)
 {
-	ufbxwi_error err = { 0 };
+	ufbxwi_error err = { { (ufbxw_error_type)0 } };
 	if (!ufbxwi_open_file_write(stream, path, path_len, &err)) {
 		if (error) {
 			*error = err.error;
