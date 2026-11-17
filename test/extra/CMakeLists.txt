@@ -2,6 +2,7 @@ include(FetchContent)
 
 add_library(ufbxw_extra)
 
+option(USE_EXTRA "Enable optional extras" ON)
 option(USE_LIBDEFLATE "Enable libdeflate" ON)
 option(USE_ZLIB "Enable Zlib" ON)
 option(USE_FMTLIB "Enable fmtlib" ON)
@@ -16,7 +17,7 @@ list(APPEND SRC_EXTRA
     "ufbxwt_extra_deflate.h"
 )
 
-if(USE_LIBDEFLATE)
+if(USE_EXTRA AND USE_LIBDEFLATE)
     FetchContent_Declare(
         libdeflate
         GIT_REPOSITORY "https://github.com/ebiggers/libdeflate.git"
@@ -35,7 +36,7 @@ if(USE_LIBDEFLATE)
     list(APPEND SRC_EXTRA "../../extra/ufbxw_libdeflate.h" "ufbxw_libdeflate.c")
 endif()
 
-if(USE_ZLIB)
+if(USE_EXTRA AND USE_ZLIB)
     FetchContent_Declare(
         zlib
         GIT_REPOSITORY "https://github.com/madler/zlib.git"
@@ -56,7 +57,7 @@ if(USE_ZLIB)
     list(APPEND SRC_EXTRA "../../extra/ufbxw_zlib.h" "ufbxw_zlib.c")
 endif()
 
-if(USE_FMTLIB)
+if(USE_EXTRA AND USE_FMTLIB)
     FetchContent_Declare(
         fmtlib
         GIT_REPOSITORY "https://github.com/fmtlib/fmt"
@@ -72,13 +73,13 @@ if(USE_FMTLIB)
     list(APPEND SRC_EXTRA "../../extra/ufbxw_fmtlib.h" "ufbxw_fmtlib.cpp")
 endif()
 
-if(USE_TO_CHARS)
+if(USE_EXTRA AND USE_TO_CHARS)
     target_compile_definitions(ufbxw_extra PUBLIC UFBXWT_HAS_TO_CHARS=1)
 
     list(APPEND SRC_EXTRA "../../extra/ufbxw_to_chars.h" "ufbxw_to_chars.cpp")
 endif()
 
-if(USE_ZMIJ)
+if(USE_EXTRA AND USE_ZMIJ)
     FetchContent_Populate(
         zmij
         GIT_REPOSITORY "https://github.com/vitaut/zmij.git"
@@ -114,7 +115,7 @@ if(USE_ZMIJ)
     )
 endif()
 
-if(USE_CPP_THREADS)
+if(USE_EXTRA AND USE_CPP_THREADS)
     target_compile_definitions(ufbxw_extra PUBLIC UFBXWT_HAS_CPP_THREADS=1)
 
     list(APPEND SRC_EXTRA "../../extra/ufbxw_cpp_threads.h" "ufbxw_cpp_threads.cpp")

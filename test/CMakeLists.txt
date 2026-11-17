@@ -7,6 +7,7 @@ include(CTest)
 option(USE_ASAN "Enable address sanitizer" OFF)
 option(USE_UBSAN "Enable undefined behavior sanitizer" OFF)
 option(USE_COVERAGE "Enable code coverage" OFF)
+option(USE_STRICT "Enable strict warning builds" OFF)
 
 add_library(ufbx_write)
 
@@ -75,6 +76,10 @@ add_subdirectory(unit)
 add_subdirectory(roundtrip)
 add_subdirectory(compare_fbx)
 add_subdirectory(deflate_benchmark)
+
+if(USE_STRICT)
+    add_subdirectory(strict)
+endif()
 
 if (MSVC)
     add_compile_options(/W4 /WX)
