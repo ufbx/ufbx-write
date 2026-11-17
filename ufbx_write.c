@@ -26,6 +26,7 @@
 	#pragma warning(push)
 	#pragma warning(disable: 4100) // 'name': unreferenced formal parameter
 	#pragma warning(disable: 4201) // nonstandard extension used: nameless struct/union
+	#pragma warning(disable: 4505) // unreferenced local function has been removed
 #endif
 
 #if defined(__clang__)
@@ -33,6 +34,7 @@
 	#pragma clang diagnostic ignored "-Wmissing-field-initializers"
 	#pragma clang diagnostic ignored "-Wmissing-braces"
 	#pragma clang diagnostic ignored "-Wunused-parameter"
+	#pragma clang diagnostic ignored "-Wunused-function"
 #endif
 
 #if defined(__GNUC__)
@@ -40,6 +42,7 @@
 	#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 	#pragma GCC diagnostic ignored "-Wmissing-braces"
 	#pragma GCC diagnostic ignored "-Wunused-parameter"
+	#pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 
 // -- Malloc
