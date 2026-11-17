@@ -33,6 +33,7 @@
 	#pragma clang diagnostic push
 	#pragma clang diagnostic ignored "-Wmissing-field-initializers"
 	#pragma clang diagnostic ignored "-Wmissing-braces"
+	#pragma clang diagnostic ignored "-Wcovered-switch-default"
 	#pragma clang diagnostic ignored "-Wunused-parameter"
 	#pragma clang diagnostic ignored "-Wunused-function"
 #endif
@@ -1543,6 +1544,7 @@ static ufbxw_string ufbxwi_vformat(ufbxwi_allocator *ator, ufbxwi_byte_list *buf
 				ufbxwi_check(dst, ufbxwi_empty_string);
 				*dst = '\0';
 			} break;
+			default: ufbxwi_unreachable("bad format specifier"); break;
 			}
 		} else {
 			if (buf->count == buf->capacity) {
@@ -4559,6 +4561,7 @@ static size_t ufbxwi_buffer_stream_read(void *dst, size_t dst_count, size_t offs
 		return fn.float_fn(user, (float*)dst, dst_count, offset);
 	case UFBXWI_BUFFER_TYPE_KEY_ATTR:
 		return fn.key_attr_fn(user, (ufbxwi_key_attr*)dst, dst_count, offset);
+	default: ufbxwi_unreachable("bad buffer type"); break;
 	}
 	return SIZE_MAX;
 }
@@ -4591,6 +4594,7 @@ static size_t ufbxwi_buffer_read_to(ufbxwi_buffer_pool *pool, ufbxw_buffer_id id
 			off += num_read;
 		}
 		return dst_count;
+	default: ufbxwi_unreachable("bad buffer state"); break;
 	}
 
 	return 0;
@@ -4635,6 +4639,7 @@ static ufbxwi_void_span ufbxwi_buffer_read(ufbxwi_buffer_pool *pool, ufbxw_buffe
 		result.data = temp;
 		result.count = off;
 	} break;
+	default: ufbxwi_unreachable("bad buffer state"); break;
 	}
 
 	return result;
@@ -4825,6 +4830,7 @@ static const void *ufbxwi_buffer_get_data(ufbxwi_buffer_pool *pool, ufbxw_buffer
 		return buffer->data.external.data;
 	case UFBXWI_BUFFER_STATE_STREAM:
 		return NULL;
+	default: ufbxwi_unreachable("bad buffer state"); break;
 	}
 	return NULL;
 }
@@ -4843,6 +4849,7 @@ ufbxwi_nodiscard static bool ufbxwi_buffer_materialize(ufbxwi_buffer_pool *pool,
 	case UFBXWI_BUFFER_STATE_STREAM:
 		ufbxwi_check(ufbxwi_make_buffer_owned(pool, id), false);
 		return true;
+	default: ufbxwi_unreachable("bad buffer state"); break;
 	}
 	return false;
 }
@@ -4913,6 +4920,7 @@ static void ufbxwi_refer_buffers(ufbxwi_buffer_pool *dst, const ufbxwi_buffer_po
 			db->state = UFBXWI_BUFFER_STATE_STREAM;
 			db->data.stream = sb->data.stream;
 			break;
+		default: ufbxwi_unreachable("bad buffer state"); break;
 		}
 	}
 }
@@ -6518,6 +6526,7 @@ static bool ufbxwi_conn_add(ufbxw_scene *scene, ufbxwi_conn_type type, void *dat
 		conn->target_weight = (ufbxw_real)100.0;
 		return true;
 	} break;
+	default: ufbxwi_unreachable("bad connection type"); break;
 	}
 
 	return false;
@@ -6577,6 +6586,7 @@ static bool ufbxwi_conn_remove_one(ufbxw_scene *scene, ufbxwi_conn_type type, vo
 			}
 		}
 	} break;
+	default: ufbxwi_unreachable("bad connection type"); break;
 	}
 
 	return false;
@@ -6637,6 +6647,7 @@ static void ufbxwi_conn_remove_all(ufbxw_scene *scene, ufbxwi_conn_type type, vo
 		}
 		d->count = dst;
 	} break;
+	default: ufbxwi_unreachable("bad connection type"); break;
 	}
 }
 
@@ -6684,6 +6695,7 @@ static bool ufbxwi_conn_collect_ids(ufbxw_scene *scene, ufbxwi_id_list *ids, ufb
 			dst[i] = d.data[i].shape.id;
 		}
 	} break;
+	default: ufbxwi_unreachable("bad connection type"); break;
 	}
 
 	// Deduplicate found IDs
@@ -6749,6 +6761,7 @@ static bool ufbxwi_conn_collect_conns(const ufbxw_scene *scene, ufbxwi_allocator
 			dst[i].dst_prop = UFBXWI_TOKEN_NONE;
 		}
 	} break;
+	default: ufbxwi_unreachable("bad connection type"); break;
 	}
 
 	return true;
@@ -6778,6 +6791,7 @@ static void ufbxwi_conn_clear(ufbxw_scene *scene, ufbxwi_conn_type type, const v
 		ufbxwi_blend_shape_conn_list *d = (ufbxwi_blend_shape_conn_list*)data;
 		d->count = 0;
 	} break;
+	default: ufbxwi_unreachable("bad connection type"); break;
 	}
 }
 
@@ -7286,6 +7300,7 @@ static ufbxwi_forceinline const void *ufbxwi_resolve_prop_value(const ufbxwi_ele
 		ufbxwi_dev_assert(offset < elem->prop_data_size);
 		base = elem->prop_data;
 		break;
+	default: ufbxwi_unreachable("bad property value type"); break;
 	}
 	return (const char*)base + offset;
 }
@@ -7306,6 +7321,7 @@ static ufbxwi_forceinline void *ufbxwi_edit_prop_value(ufbxwi_element *elem, ufb
 		ufbxwi_dev_assert(offset < elem->prop_data_size);
 		base = elem->prop_data;
 		break;
+	default: ufbxwi_unreachable("bad property value type"); break;
 	}
 	return (char*)base + offset;
 }
@@ -9283,6 +9299,7 @@ static void ufbxwi_write_queue_resolve_reloc(ufbxwi_write_queue *wq, uint32_t re
 	case UFBXWI_WRITE_RELOC_RELATIVE_U64:
 		ufbxwi_write_u64(dst, relative_offset);
 		break;
+	default: ufbxwi_unreachable("bad relocation type"); break;
 	}
 
 	ufbxwi_dev_assert(patch_chunk->num_unresolved_relocs > 0);
@@ -10777,6 +10794,7 @@ static void ufbxwi_binary_dom_write_array(ufbxwi_save_context *sc, const char *t
 			}
 
 		} break;
+		default: ufbxwi_unreachable("bad buffer state"); break;
 		}
 
 		ufbxwi_free_buffer(&sc->buffers, buffer_id);
@@ -10838,6 +10856,7 @@ static void ufbxwi_binary_dom_write_blob(ufbxwi_save_context *sc, const char *ta
 		}
 
 	} break;
+	default: ufbxwi_unreachable("bad buffer state"); break;
 	}
 
 	ufbxwi_free_buffer(&sc->buffers, blob.id);
@@ -11461,6 +11480,7 @@ static void ufbxwi_save_skeleton(ufbxwi_save_context *sc, ufbxwi_skeleton *skele
 	case UFBXW_BONE_ROOT:
 		ufbxwi_dom_value(sc, "TypeFlags", "CCC", "Null", "Skeleton", "Root");
 		break;
+	default: ufbxwi_unreachable("bad bone type"); break;
 	}
 }
 
@@ -13945,6 +13965,7 @@ ufbxw_abi ufbxw_bone ufbxw_create_bone(ufbxw_scene *scene, ufbxw_bone_type type,
 	case UFBXW_BONE_ROOT:
 		type_name = "Root";
 		break;
+	default: break;
 	}
 	ufbxw_bone bone = { ufbxw_create_element_ex(scene, UFBXW_ELEMENT_BONE, type_name) };
 	if (node.id) {
@@ -14414,6 +14435,7 @@ ufbxw_abi ufbxw_material ufbxw_create_material(ufbxw_scene *scene, ufbxw_materia
 		break;
 	case UFBXW_MATERIAL_CUSTOM:
 		break;
+	default: break;
 	}
 	ufbxw_material material = { ufbxw_create_element_ex(scene, UFBXW_ELEMENT_MATERIAL, type_name) };
 	return material;
@@ -14468,6 +14490,7 @@ ufbxw_abi ufbxw_texture ufbxw_create_texture(ufbxw_scene *scene, ufbxw_texture_t
 	case UFBXW_TEXTURE_FILE:
 		type_name = "FbxFileTexture";
 		break;
+	default: break;
 	}
 	ufbxw_texture texture = { ufbxw_create_element_ex(scene, UFBXW_ELEMENT_TEXTURE, type_name) };
 	return texture;
