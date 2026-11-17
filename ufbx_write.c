@@ -5740,8 +5740,8 @@ static const ufbxwi_object_desc ufbxwi_object_types[] = {
 typedef struct {
 	union {
 		bool bool_;
-		int32_t int32_t;
-		int64_t int64_t;
+		int32_t int32;
+		int64_t int64;
 		ufbxw_real real;
 		ufbxw_vec2 vec2;
 		ufbxw_vec3 vec3;
