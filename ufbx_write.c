@@ -10059,7 +10059,7 @@ static void ufbxwi_ascii_dom_write(ufbxwi_save_context *sc, const char *tag, con
 			ufbxwi_ascii_dom_string(sc, str.data, str.length);
 		} break;
 		case 'T': {
-			ufbxwi_token token = va_arg(args, ufbxwi_token);
+			ufbxwi_token token = (ufbxwi_token)va_arg(args, int);
 			ufbxw_string str = sc->scene->string_pool.tokens.data[token];
 			ufbxwi_ascii_dom_string(sc, str.data, str.length);
 		} break;
@@ -10482,7 +10482,7 @@ static void ufbxwi_binary_dom_write(ufbxwi_save_context *sc, const char *tag, co
 			ufbxwi_write(sc, value.data, value.length);
 		} break;
 		case 'T': {
-			ufbxwi_token token = va_arg(args, ufbxwi_token);
+			ufbxwi_token token = (ufbxwi_token)va_arg(args, int);
 			ufbxw_string value = sc->scene->string_pool.tokens.data[token];
 			uint32_t len_u32 = (uint32_t)value.length;
 			ufbxwi_write(sc, "S", 1);
