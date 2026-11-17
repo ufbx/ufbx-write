@@ -12295,18 +12295,90 @@ static void ufbxwi_stdio_close(void *user)
 
 static bool ufbxwi_open_file_write(ufbxw_write_stream *stream, const char *path, size_t path_len, ufbxwi_error *error)
 {
-	if (path_len >= 1023) {
-		ufbxwi_failf(error, UFBXW_ERROR_PATH_TOO_LONG, "Path too long (%zu bytes, max 1023)", path_len);
+	FILE *f = NULL;
+#if !defined(UFBXW_STANDARD_C) && defined(_WIN32)
+	if (path_len >= SIZE_MAX / sizeof(wchar_t)) {
+		ufbxwi_failf(error, UFBXW_ERROR_ALLOCATION_FAILURE, "Allocation size overflow");
 		return false;
 	}
+	size_t alloc_size = (path_len + 1) * sizeof(wchar_t);
+	wchar_t wpath_buf[256], *wpath = wpath_buf;
+	if (path_len >= ufbxwi_arraycount(wpath_buf)) {
+		wpath = (wchar_t*)ufbxw_malloc(alloc_size);
+		if (!wpath) {
+			ufbxwi_failf(error, UFBXW_ERROR_ALLOCATION_FAILURE, "Failed to allocate %zu bytes", alloc_size);
+			return false;
+		}
+	}
 
-	// TODO: Do this properly
-	char copy[1024];
+	// Convert UTF-8 to UTF-16 but allow stray surrogate pairs as the Windows
+	// file system encoding allows them as well.
+	size_t wlen = 0;
+	for (size_t i = 0; i < path_len; ) {
+		uint32_t code = UINT32_MAX;
+		char c = path[i++];
+		if ((c & 0x80) == 0) {
+			code = (uint32_t)c;
+		} else if ((c & 0xe0) == 0xc0) {
+			code = (uint32_t)(c & 0x1f);
+			if (i < path_len) code = code << 6 | (uint32_t)(path[i++] & 0x3f);
+		} else if ((c & 0xf0) == 0xe0) {
+			code = (uint32_t)(c & 0x0f);
+			if (i < path_len) code = code << 6 | (uint32_t)(path[i++] & 0x3f);
+			if (i < path_len) code = code << 6 | (uint32_t)(path[i++] & 0x3f);
+		} else if ((c & 0xf8) == 0xf0) {
+			code = (uint32_t)(c & 0x07);
+			if (i < path_len) code = code << 6 | (uint32_t)(path[i++] & 0x3f);
+			if (i < path_len) code = code << 6 | (uint32_t)(path[i++] & 0x3f);
+			if (i < path_len) code = code << 6 | (uint32_t)(path[i++] & 0x3f);
+		} else {
+			if (wpath != wpath_buf) {
+				ufbxw_free(wpath, alloc_size);
+			}
+			ufbxwi_failf(error, UFBXW_ERROR_FILE_OPEN_FAILED, "Invalid UTF-8");
+			return false;
+		}
+
+		if (code < 0x10000) {
+			wpath[wlen++] = (wchar_t)code;
+		} else {
+			code -= 0x10000;
+			wpath[wlen++] = (wchar_t)(0xd800 + (code >> 10));
+			wpath[wlen++] = (wchar_t)(0xdc00 + (code & 0x3ff));
+		}
+	}
+	wpath[wlen] = 0;
+
+	#if defined(_MSC_VER) && _MSC_VER >= 1400
+		if (_wfopen_s(&f, wpath, L"wb") != 0) f = NULL;
+	#else
+		f = _wfopen(wpath, L"wb");
+	#endif
+	if (wpath != wpath_buf) {
+		ufbxw_free(wpath, alloc_size);
+	}
+#else
+	if (path_len == SIZE_MAX) {
+		ufbxwi_failf(error, UFBXW_ERROR_ALLOCATION_FAILURE, "Allocation size overflow");
+		return false;
+	}
+	size_t alloc_size = path_len + 1;
+	char copy_buf[256], *copy = copy_buf;
+	if (path_len >= ufbxwi_arraycount(copy_buf)) {
+		copy = (char*)ufbxw_malloc(alloc_size);
+		if (!copy) {
+			ufbxwi_failf(error, UFBXW_ERROR_ALLOCATION_FAILURE, "Failed to allocate %zu bytes", alloc_size);
+			return false;
+		}
+	}
 	memcpy(copy, path, path_len);
 	copy[path_len] = '\0';
 
-	// TODO: fopen_s() etc
-	FILE *f = fopen(copy, "wb");
+	f = fopen(copy, "wb");
+	if (copy != copy_buf) {
+		ufbxw_free(copy, alloc_size);
+	}
+#endif
 	if (!f) {
 		ufbxwi_failf(error, UFBXW_ERROR_FILE_OPEN_FAILED, "Failed to open file: %.*s", (int)path_len, path);
 		return false;
