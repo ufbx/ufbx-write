@@ -22,6 +22,26 @@
 // Disable formatting for this section, as we have a lot of code indented in preprocessor directives
 // ufbxwi_disable_format
 
+#if defined(_MSC_VER)
+	#pragma warning(push)
+	#pragma warning(disable: 4100) // 'name': unreferenced formal parameter
+	#pragma warning(disable: 4201) // nonstandard extension used: nameless struct/union
+#endif
+
+#if defined(__clang__)
+	#pragma clang diagnostic push
+	#pragma clang diagnostic ignored "-Wmissing-field-initializers"
+	#pragma clang diagnostic ignored "-Wmissing-braces"
+	#pragma clang diagnostic ignored "-Wunused-parameter"
+#endif
+
+#if defined(__GNUC__)
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+	#pragma GCC diagnostic ignored "-Wmissing-braces"
+	#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
+
 // -- Malloc
 
 #if defined(ufbxw_malloc) || defined(ufbxw_realloc) || defined(ufbxw_free)
@@ -15533,6 +15553,18 @@ ufbxw_abi ufbxw_string ufbxw_str(const char *str)
 }
 #endif
 
+#endif
+
+#if defined(_MSC_VER)
+	#pragma warning(pop)
+#endif
+
+#if defined(__clang__)
+	#pragma clang diagnostic pop
+#endif
+
+#if defined(__GNUC__)
+	#pragma GCC diagnostic pop
 #endif
 
 #endif

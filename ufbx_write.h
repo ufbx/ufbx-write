@@ -5,6 +5,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#if defined(_MSC_VER)
+	#pragma warning(push)
+	#pragma warning(disable: 4201) // nonstandard extension used: nameless struct/union
+#endif
+
 #ifndef ufbxw_abi
 #define ufbxw_abi
 #endif
@@ -1734,6 +1739,10 @@ ufbxw_abi ufbxw_string ufbxw_str(const char *str);
 
 #ifdef __cplusplus
 }
+#endif
+
+#if defined(_MSC_VER)
+	#pragma warning(pop)
 #endif
 
 #endif
