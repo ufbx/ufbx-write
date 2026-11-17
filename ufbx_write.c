@@ -1468,7 +1468,7 @@ static ufbxwi_forceinline void ufbxwi_list_free_size(ufbxwi_allocator *ator, voi
 #define ufbxwi_list_push_zero_n(ator, list, type, n) ufbxwi_maybe_null((ufbxwi_check_ptr_type(type, (list)->data), (type*)ufbxwi_list_push_zero_size((ator), (list), sizeof(type), (n))))
 #define ufbxwi_list_push_copy(ator, list, type, src) ufbxwi_maybe_null((ufbxwi_check_ptr_type(type, (list)->data), ufbxwi_check_ptr_type(type, src), (type*)ufbxwi_list_push_copy_size((ator), (list), sizeof(type), 1, (src))))
 #define ufbxwi_list_push_copy_n(ator, list, type, n, src) ufbxwi_maybe_null((ufbxwi_check_ptr_type(type, (list)->data), ufbxwi_check_ptr_type(type, src), (type*)ufbxwi_list_push_copy_size((ator), (list), sizeof(type), (n), (src))))
-#define ufbxwi_list_resize_uninit(ator, list, type, n) (ufbxwi_check_ptr_type(type, (list)->data), (type*)ufbxwi_list_resize_size((ator), (list), sizeof(type), (n)))
+#define ufbxwi_list_resize_uninit(ator, list, type, n) (ufbxwi_check_ptr_type(type, (list)->data), ufbxwi_list_resize_size((ator), (list), sizeof(type), (n)))
 #define ufbxwi_list_free(ator, list) ufbxwi_list_free_size((ator), (list), sizeof(*(list)->data))
 
 
@@ -9939,7 +9939,7 @@ static void ufbxwi_ascii_dom_string(ufbxwi_save_context *sc, const char *str, si
 		const char *end = str + length;
 		for (;;) {
 			// TODO: Line break escaping, other special characters
-			const char *quote = memchr(str, '"', ufbxwi_to_size(end - str));
+			const char *quote = (const char*)memchr(str, '"', ufbxwi_to_size(end - str));
 			if (!quote) {
 				ufbxwi_write(sc, str, ufbxwi_to_size(end - str));
 				break;
