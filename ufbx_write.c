@@ -1536,7 +1536,7 @@ static ufbxw_string ufbxwi_vformat(ufbxwi_allocator *ator, ufbxwi_byte_list *buf
 				ufbxwi_check(ufbxwi_list_push_copy_n(ator, buf, char, len, str), ufbxwi_empty_string);
 			} break;
 			case 'S': {
-				ufbxw_string str = va_arg(args, ufbxw_string);
+				ufbxw_string str = *va_arg(args, const ufbxw_string*);
 				ufbxwi_check(ufbxwi_list_push_copy_n(ator, buf, char, str.length, str.data), ufbxwi_empty_string);
 			} break;
 			case '0': {
@@ -8052,7 +8052,7 @@ static ufbxw_anim_prop ufbxwi_animate_prop(ufbxw_scene *scene, ufbxw_id id, ufbx
 	// For single channel properties, use the property name
 	if (curve_count == 1) {
 		ufbxw_string prop_name = scene->string_pool.tokens.data[prop];
-		ufbxw_string name = ufbxwi_format(&scene->ator, &scene->tmp_list, "d|%S", prop_name);
+		ufbxw_string name = ufbxwi_format(&scene->ator, &scene->tmp_list, "d|%S", &prop_name);
 		first_curve_prop = ufbxwi_intern_token(&scene->string_pool, name.data, name.length);
 	}
 
@@ -10072,7 +10072,7 @@ static void ufbxwi_ascii_dom_write(ufbxwi_save_context *sc, const char *tag, con
 			ufbxwi_write(sc, &str, 1);
 		} break;
 		case 'S': {
-			ufbxw_string str = va_arg(args, ufbxw_string);
+			ufbxw_string str = *va_arg(args, const ufbxw_string*);
 			ufbxwi_ascii_dom_string(sc, str.data, str.length);
 		} break;
 		case 'T': {
@@ -10492,7 +10492,7 @@ static void ufbxwi_binary_dom_write(ufbxwi_save_context *sc, const char *tag, co
 			ufbxwi_write(sc, &value, 1);
 		} break;
 		case 'S': {
-			ufbxw_string value = va_arg(args, ufbxw_string);
+			ufbxw_string value = *va_arg(args, const ufbxw_string*);
 			uint32_t len_u32 = (uint32_t)value.length;
 			ufbxwi_write(sc, "S", 1);
 			ufbxwi_write(sc, &len_u32, 4);
@@ -10507,7 +10507,7 @@ static void ufbxwi_binary_dom_write(ufbxwi_save_context *sc, const char *tag, co
 			ufbxwi_write(sc, value.data, value.length);
 		} break;
 		case 'R': {
-			ufbxw_blob value = va_arg(args, ufbxw_blob);
+			ufbxw_blob value = *va_arg(args, const ufbxw_blob*);
 			uint32_t len_u32 = (uint32_t)value.size;
 			ufbxwi_write(sc, "R", 1);
 			ufbxwi_write(sc, &len_u32, 4);
@@ -11151,46 +11151,46 @@ static void ufbxwi_save_props(ufbxwi_save_context *sc, const ufbxwi_element *ele
 
 		switch (type->data_type) {
 		case UFBXW_PROP_DATA_NONE: {
-			ufbxwi_dom_value(sc, "P", "SSSC", name, type->type, type->sub_type, flags);
+			ufbxwi_dom_value(sc, "P", "SSSC", &name, &type->type, &type->sub_type, flags);
 		} break;
 		case UFBXW_PROP_DATA_BOOL: {
 			const bool *d = (const bool*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCI", name, type->type, type->sub_type, flags, *d ? 1 : 0);
+			ufbxwi_dom_value(sc, "P", "SSSCI", &name, &type->type, &type->sub_type, flags, *d ? 1 : 0);
 		} break;
 		case UFBXW_PROP_DATA_INT32: {
 			const int32_t *d = (const int32_t*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCI", name, type->type, type->sub_type, flags, *d);
+			ufbxwi_dom_value(sc, "P", "SSSCI", &name, &type->type, &type->sub_type, flags, *d);
 		} break;
 		case UFBXW_PROP_DATA_INT64: {
 			const int64_t *d = (const int64_t*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCL", name, type->type, type->sub_type, flags, *d);
+			ufbxwi_dom_value(sc, "P", "SSSCL", &name, &type->type, &type->sub_type, flags, *d);
 		} break;
 		case UFBXW_PROP_DATA_REAL: {
 			const ufbxw_real *d = (const ufbxw_real*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCD", name, type->type, type->sub_type, flags, *d);
+			ufbxwi_dom_value(sc, "P", "SSSCD", &name, &type->type, &type->sub_type, flags, *d);
 		} break;
 		case UFBXW_PROP_DATA_VEC2: {
 			const ufbxw_vec2 *d = (const ufbxw_vec2*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCDD", name, type->type, type->sub_type, flags, d->x, d->y);
+			ufbxwi_dom_value(sc, "P", "SSSCDD", &name, &type->type, &type->sub_type, flags, d->x, d->y);
 		} break;
 		case UFBXW_PROP_DATA_VEC3: {
 			const ufbxw_vec3 *d = (const ufbxw_vec3*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCDDD", name, type->type, type->sub_type, flags, d->x, d->y, d->z);
+			ufbxwi_dom_value(sc, "P", "SSSCDDD", &name, &type->type, &type->sub_type, flags, d->x, d->y, d->z);
 		} break;
 		case UFBXW_PROP_DATA_VEC4: {
 			const ufbxw_vec4 *d = (const ufbxw_vec4*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCDDDD", name, type->type, type->sub_type, flags, d->x, d->y, d->z, d->w);
+			ufbxwi_dom_value(sc, "P", "SSSCDDDD", &name, &type->type, &type->sub_type, flags, d->x, d->y, d->z, d->w);
 		} break;
 		case UFBXW_PROP_DATA_STRING: {
 			const ufbxw_string *d = (const ufbxw_string*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCS", name, type->type, type->sub_type, flags, *d);
+			ufbxwi_dom_value(sc, "P", "SSSCS", &name, &type->type, &type->sub_type, flags, d);
 		} break;
 		case UFBXW_PROP_DATA_ID: {
-			ufbxwi_dom_value(sc, "P", "SSSC", name, type->type, type->sub_type, flags);
+			ufbxwi_dom_value(sc, "P", "SSSC", &name, &type->type, &type->sub_type, flags);
 		} break;
 		case UFBXW_PROP_DATA_REAL_STRING: {
 			const ufbxw_real_string *d = (const ufbxw_real_string*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCDS", name, type->type, type->sub_type, flags, d->value, d->string);
+			ufbxwi_dom_value(sc, "P", "SSSCDS", &name, &type->type, &type->sub_type, flags, d->value, &d->string);
 		} break;
 		case UFBXW_PROP_DATA_BLOB: {
 			const ufbxw_blob *d = (const ufbxw_blob*)data;
@@ -11199,15 +11199,15 @@ static void ufbxwi_save_props(ufbxwi_save_context *sc, const ufbxwi_element *ele
 		} break;
 		case UFBXW_PROP_DATA_USER_INT: {
 			const ufbxw_user_int *d = (const ufbxw_user_int*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCIII", name, type->type, type->sub_type, flags, d->value, d->min_value, d->max_value);
+			ufbxwi_dom_value(sc, "P", "SSSCIII", &name, &type->type, &type->sub_type, flags, d->value, d->min_value, d->max_value);
 		} break;
 		case UFBXW_PROP_DATA_USER_REAL: {
 			const ufbxw_user_real *d = (const ufbxw_user_real*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCDDD", name, type->type, type->sub_type, flags, d->value, d->min_value, d->max_value);
+			ufbxwi_dom_value(sc, "P", "SSSCDDD", &name, &type->type, &type->sub_type, flags, d->value, d->min_value, d->max_value);
 		} break;
 		case UFBXW_PROP_DATA_USER_ENUM: {
 			const ufbxw_user_enum *d = (const ufbxw_user_enum*)data;
-			ufbxwi_dom_value(sc, "P", "SSSCIS", name, type->type, type->sub_type, flags, d->value, d->options);
+			ufbxwi_dom_value(sc, "P", "SSSCIS", &name, &type->type, &type->sub_type, flags, d->value, &d->options);
 		} break;
 		default:
 			ufbxwi_unreachable("bad data type");
@@ -11248,9 +11248,9 @@ static ufbxw_string ufbxwi_format_element_type_and_name(ufbxwi_save_context *sc,
 	const ufbxwi_element_type *et = &scene->element_types.data[element->type_id];
 	ufbxw_string fbx_type_str = scene->string_pool.tokens.data[et->fbx_type];
 	if (sc->ascii) {
-		return ufbxwi_save_format(sc, "%S::%S", fbx_type_str, element->name);
+		return ufbxwi_save_format(sc, "%S::%S", &fbx_type_str, &element->name);
 	} else {
-		return ufbxwi_save_format(sc, "%S%0\x01%S", element->name, fbx_type_str);
+		return ufbxwi_save_format(sc, "%S%0\x01%S", &element->name, &fbx_type_str);
 	}
 }
 
@@ -11357,7 +11357,7 @@ static void ufbxwi_save_mesh_data(ufbxwi_save_context *sc, ufbxwi_element *eleme
 		ufbxwi_dom_open(sc, info->layer_element_name, "I", attrib->set);
 
 		ufbxwi_dom_value(sc, "Version", "I", info->version);
-		ufbxwi_dom_value(sc, "Name", "S", attrib->name);
+		ufbxwi_dom_value(sc, "Name", "S", &attrib->name);
 		ufbxwi_dom_value(sc, "MappingInformationType", "C", ufbxwi_attribute_mapping_infos[attrib->mapping].name);
 		ufbxwi_dom_value(sc, "ReferenceInformationType", "C", attrib->indices ? "IndexToDirect" : "Direct");
 
@@ -11516,7 +11516,7 @@ static void ufbxwi_save_bind_pose(ufbxwi_save_context *sc, ufbxwi_bind_pose *pos
 static void ufbxwi_save_binding_table(ufbxwi_save_context *sc, ufbxwi_binding_table *table)
 {
 	ufbxwi_for_list(ufbxwi_binding_entry, entry, table->entries) {
-		ufbxwi_dom_value(sc, "Entry", "SCSC", entry->property_entry, "FbxPropertyEntry", entry->semantic_entry, "FbxSemanticEntry");
+		ufbxwi_dom_value(sc, "Entry", "SCSC", &entry->property_entry, "FbxPropertyEntry", &entry->semantic_entry, "FbxSemanticEntry");
 	}
 }
 
@@ -11527,7 +11527,7 @@ static void ufbxwi_save_selection_set(ufbxwi_save_context *sc, ufbxwi_selection_
 		ufbxwi_element *element = ufbxwi_get_element(sc->scene, id);
 		if (element) {
 			ufbxw_string name = ufbxwi_format_element_type_and_name(sc, element);
-			ufbxwi_dom_value(sc, "Member", "S", name);
+			ufbxwi_dom_value(sc, "Member", "S", &name);
 		}
 	}
 }
@@ -11540,7 +11540,7 @@ static void ufbxwi_save_selection_node(ufbxwi_save_context *sc, ufbxwi_selection
 		ufbxwi_node *node = ufbxwi_get_node(sc->scene, selection->node);
 		if (node) {
 			ufbxw_string name = ufbxwi_format_element_type_and_name(sc, &node->element);
-			ufbxwi_dom_value(sc, "Node", "S", name);
+			ufbxwi_dom_value(sc, "Node", "S", &name);
 		}
 	}
 
@@ -11740,9 +11740,9 @@ static void ufbxwi_save_element(ufbxwi_save_context *sc, ufbxwi_element *element
 		ufbxw_string name = ufbxwi_format_element_type_and_name(sc, element);
 
 		if ((flags & UFBXWI_SAVE_ELEMENT_NO_ID) != 0) {
-			ufbxwi_dom_open(sc, obj_type_str.data, "ST", name, sub_type);
+			ufbxwi_dom_open(sc, obj_type_str.data, "ST", &name, sub_type);
 		} else {
-			ufbxwi_dom_open(sc, obj_type_str.data, "LST", (int64_t)id, name, sub_type);
+			ufbxwi_dom_open(sc, obj_type_str.data, "LST", (int64_t)id, &name, sub_type);
 		}
 	}
 
@@ -11777,7 +11777,7 @@ static void ufbxwi_save_element(ufbxwi_save_context *sc, ufbxwi_element *element
 	} else if (type == UFBXW_ELEMENT_MATERIAL) {
 		const ufbxwi_material *material = (const ufbxwi_material*)element;
 		ufbxwi_dom_value(sc, "Version", "I", 120);
-		ufbxwi_dom_value(sc, "ShadingModel", "S", material->shading_model);
+		ufbxwi_dom_value(sc, "ShadingModel", "S", &material->shading_model);
 		ufbxwi_dom_value(sc, "MultiLayer", "I", material->multi_layer ? 1 : 0);
 	} else if (type == UFBXW_ELEMENT_IMPLEMENTATION) {
 		ufbxwi_dom_value(sc, "Version", "I", 100);
@@ -11785,7 +11785,7 @@ static void ufbxwi_save_element(ufbxwi_save_context *sc, ufbxwi_element *element
 		ufbxwi_dom_value(sc, "Version", "I", 100);
 	} else if (type == UFBXW_ELEMENT_TEXTURE) {
 		const ufbxwi_texture *texture = (const ufbxwi_texture*)element;
-		ufbxwi_dom_value(sc, "Type", "S", texture->type);
+		ufbxwi_dom_value(sc, "Type", "S", &texture->type);
 		ufbxwi_dom_value(sc, "Version", "I", 202);
 	} else if (type == UFBXW_ELEMENT_VIDEO) {
 		ufbxwi_dom_value(sc, "Type", "C", "Clip");
@@ -11870,15 +11870,15 @@ static void ufbxwi_save_element(ufbxwi_save_context *sc, ufbxwi_element *element
 
 	if (type == UFBXW_ELEMENT_TEXTURE) {
 		const ufbxwi_texture *texture = (const ufbxwi_texture*)element;
-		ufbxwi_dom_value(sc, "FileName", "S", texture->filename);
-		ufbxwi_dom_value(sc, "RelativeFilename", "S", texture->relative_filename);
+		ufbxwi_dom_value(sc, "FileName", "S", &texture->filename);
+		ufbxwi_dom_value(sc, "RelativeFilename", "S", &texture->relative_filename);
 	}
 
 	if (type == UFBXW_ELEMENT_VIDEO) {
 		const ufbxwi_video *video = (const ufbxwi_video*)element;
 		ufbxwi_dom_value(sc, "UseMipMap", "I", 0);
-		ufbxwi_dom_value(sc, "Filename", "S", video->filename);
-		ufbxwi_dom_value(sc, "RelativeFilename", "S", video->relative_filename);
+		ufbxwi_dom_value(sc, "Filename", "S", &video->filename);
+		ufbxwi_dom_value(sc, "RelativeFilename", "S", &video->relative_filename);
 		ufbxwi_dom_blob(sc, "Content", video->content);
 	}
 
@@ -12100,11 +12100,11 @@ static void ufbxwi_save_takes(ufbxwi_save_context *sc)
 		if (type != UFBXW_ELEMENT_ANIM_STACK) continue;
 		ufbxwi_element *element = slot->element;
 
-		ufbxw_string take_name = ufbxwi_save_format(sc, "%S.tak", element->name);
+		ufbxw_string take_name = ufbxwi_save_format(sc, "%S.tak", &element->name);
 
 		ufbxwi_anim_stack *stack = (ufbxwi_anim_stack*)element;
-		ufbxwi_dom_open(sc, "Take", "S", element->name);
-		ufbxwi_dom_value(sc, "FileName", "S", take_name);
+		ufbxwi_dom_open(sc, "Take", "S", &element->name);
+		ufbxwi_dom_value(sc, "FileName", "S", &take_name);
 		ufbxwi_dom_value(sc, "LocalTime", "LL", stack->local_start, stack->local_stop);
 		ufbxwi_dom_value(sc, "ReferenceTime", "LL", stack->reference_start, stack->reference_stop);
 		ufbxwi_dom_close(sc);
@@ -12153,7 +12153,7 @@ static void ufbxwi_save_root(ufbxwi_save_context *sc)
 		ufbxwi_dom_value(sc, "FBXHeaderVersion", "I", 1003);
 		ufbxwi_dom_value(sc, "FBXVersion", "I", sc->opts.version);
 		ufbxwi_save_timestamp(sc, timestamp);
-		ufbxwi_dom_value(sc, "Creator", "S", creator);
+		ufbxwi_dom_value(sc, "Creator", "S", &creator);
 
 		{
 			ufbxw_id scene_info_id = ufbxw_get_scene_info_id(scene);
@@ -12180,9 +12180,9 @@ static void ufbxwi_save_root(ufbxwi_save_context *sc)
 		ufbxwi_binary_fileid_magic(file_id_magic, creation_time);
 
 		ufbxw_blob file_id_blob = { file_id_magic, 16 };
-		ufbxwi_dom_value(sc, "FileId", "R", file_id_blob);
+		ufbxwi_dom_value(sc, "FileId", "R", &file_id_blob);
 		ufbxwi_dom_value(sc, "CreationTime", "C", creation_time);
-		ufbxwi_dom_value(sc, "Creator", "S", creator);
+		ufbxwi_dom_value(sc, "Creator", "S", &creator);
 	}
 
 	{
