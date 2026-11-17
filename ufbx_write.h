@@ -80,6 +80,17 @@
 #define UFBXW_HEADER_VERSION ufbxw_pack_version(0, 3, 0)
 #define UFBXW_VERSION UFBXW_HEADER_VERSION
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+ufbxw_abi_data const uint32_t ufbxw_source_version;
+
+#ifdef __cplusplus
+}
+#endif
+
+
 // -- Configuration
 
 // UTF-8
