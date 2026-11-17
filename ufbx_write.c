@@ -1654,7 +1654,7 @@ static ufbxwi_noinline void ufbxwi_sort_huff_symbols(ufbxwi_huff_node *nodes, si
 	}
 }
 
-void ufbxwi_build_huffman(ufbxwi_huff_symbol *symbols, const uint16_t *counts, uint32_t num_symbols, uint32_t max_bits)
+static void ufbxwi_build_huffman(ufbxwi_huff_symbol *symbols, const uint16_t *counts, uint32_t num_symbols, uint32_t max_bits)
 {
 	ufbxwi_huff_node nodes[1024];
 
@@ -4078,7 +4078,7 @@ static void ufbxwi_mark_string_pool_failed(ufbxwi_string_pool *pool)
 	pool->entry_capacity = 0;
 }
 
-bool ufbxwi_string_pool_rehash(ufbxwi_string_pool *pool)
+static bool ufbxwi_string_pool_rehash(ufbxwi_string_pool *pool)
 {
 	size_t capacity = ufbxwi_max_sz(pool->entry_capacity * 2, 512);
 	ufbxwi_string_entry *new_entries = ufbxwi_alloc(pool->ator, ufbxwi_string_entry, capacity);
@@ -4281,7 +4281,7 @@ static bool ufbxwi_intern_string_str_or_default(ufbxwi_string_pool *pool, ufbxw_
 	}
 }
 
-uint32_t ufbxwi_hash_token(ufbxwi_token token)
+static uint32_t ufbxwi_hash_token(ufbxwi_token token)
 {
 	uint32_t x = (uint32_t)token;
 	x ^= x >> 16;
