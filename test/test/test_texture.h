@@ -162,3 +162,46 @@ UFBXWT_SCENE_CHECK(texture_file_content)
 	ufbxwt_assert(!memcmp(video->content.data, "Hello, world!", 13));
 }
 #endif
+
+#if UFBXWT_IMPL
+static const unsigned char ufbxwt_shared_video_content[] = { 0x00, 0x01, 0x7f, 0x80, 0xff };
+#endif
+
+UFBXWT_SCENE_TEST(texture_shared_video)
+#if UFBXWT_IMPL
+{
+	ufbxw_video video = ufbxw_create_video(scene);
+	ufbxw_set_name(scene, video.id, "Video");
+	ufbxw_video_set_relative_filename(scene, video, "shared.png");
+	ufbxw_byte_buffer content = ufbxw_view_byte_array(scene, ufbxwt_shared_video_content, sizeof(ufbxwt_shared_video_content));
+	ufbxw_video_set_content(scene, video, content);
+
+	ufbxw_texture texture_a = ufbxw_create_texture(scene, UFBXW_TEXTURE_FILE);
+	ufbxw_texture texture_b = ufbxw_create_texture(scene, UFBXW_TEXTURE_FILE);
+	ufbxw_set_name(scene, texture_a.id, "TextureA");
+	ufbxw_set_name(scene, texture_b.id, "TextureB");
+	ufbxw_texture_set_video(scene, texture_a, video);
+	ufbxw_texture_set_video(scene, texture_b, video);
+}
+#endif
+
+UFBXWT_SCENE_CHECK(texture_shared_video)
+#if UFBXWT_IMPL
+{
+	ufbxwt_assert(scene->videos.count == 1);
+	ufbx_video *video = scene->videos.data[0];
+
+	ufbx_texture *texture_a = (ufbx_texture*)ufbx_find_element(scene, UFBX_ELEMENT_TEXTURE, "TextureA");
+	ufbx_texture *texture_b = (ufbx_texture*)ufbx_find_element(scene, UFBX_ELEMENT_TEXTURE, "TextureB");
+	ufbxwt_assert(texture_a && texture_a->video == video);
+	ufbxwt_assert(texture_b && texture_b->video == video);
+
+	size_t content_size = sizeof(ufbxwt_shared_video_content);
+	ufbxwt_assert(video->content.size == content_size);
+	ufbxwt_assert(!memcmp(video->content.data, ufbxwt_shared_video_content, content_size));
+	ufbxwt_assert(texture_a->content.size == content_size);
+	ufbxwt_assert(!memcmp(texture_a->content.data, ufbxwt_shared_video_content, content_size));
+	ufbxwt_assert(texture_b->content.size == content_size);
+	ufbxwt_assert(!memcmp(texture_b->content.data, ufbxwt_shared_video_content, content_size));
+}
+#endif
