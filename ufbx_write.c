@@ -5466,7 +5466,7 @@ typedef struct {
 
 typedef struct {
 	ufbxwi_element element;
-	ufbxw_texture texture;
+	ufbxwi_id_list textures;
 	ufbxw_string filename;
 	ufbxw_string relative_filename;
 	ufbxw_byte_buffer content;
@@ -6475,7 +6475,7 @@ static const ufbxwi_connection_info ufbxwi_connection_infos[] = {
 	{ "Node Attribute", UFBXWI_CONN_BIT_ELEMENT_NODE_ATTRIBUTE, UFBXWI_CONN_BIT_ELEMENT_NODE, ufbxwi_conn_id_list(ufbxwi_node_attribute, instances), ufbxwi_conn_id(ufbxwi_node, attribute) },
 	{ "Node Material", UFBXWI_CONN_BIT_ELEMENT_MATERIAL, UFBXWI_CONN_BIT_ELEMENT_NODE, ufbxwi_conn_id_list_ex(ufbxwi_material, conn_nodes, UFBXWI_CONN_TYPE_UNORDERED), ufbxwi_conn_id_list_ex(ufbxwi_node, materials, UFBXWI_CONN_TYPE_SPARSE) },
 	{ "Material Texture", UFBXWI_CONN_BIT_ELEMENT_TEXTURE, UFBXWI_CONN_BIT_PROPERTY_MATERIAL, ufbxwi_conn_conn_list_ex(ufbxwi_texture, conn_materials, UFBXWI_CONN_TYPE_UNORDERED), ufbxwi_conn_conn_list(ufbxwi_material, textures) },
-	{ "Video Texture", UFBXWI_CONN_BIT_ELEMENT_VIDEO, UFBXWI_CONN_BIT_ELEMENT_TEXTURE, ufbxwi_conn_id(ufbxwi_video, texture), ufbxwi_conn_id(ufbxwi_texture, video) },
+	{ "Video Texture", UFBXWI_CONN_BIT_ELEMENT_VIDEO, UFBXWI_CONN_BIT_ELEMENT_TEXTURE, ufbxwi_conn_id_list(ufbxwi_video, textures), ufbxwi_conn_id(ufbxwi_texture, video) },
 	{ "Mesh Deformer", UFBXWI_CONN_BIT_ELEMENT_DEFORMER, UFBXWI_CONN_BIT_ELEMENT_MESH, ufbxwi_conn_id_list(ufbxwi_deformer, geometries), ufbxwi_conn_id_list(ufbxwi_mesh, deformers) },
 	{ "Skin Cluster", UFBXWI_CONN_BIT_ELEMENT_SKIN_CLUSTER, UFBXWI_CONN_BIT_ELEMENT_SKIN_DEFORMER, ufbxwi_conn_id(ufbxwi_skin_cluster, deformer), ufbxwi_conn_id_list(ufbxwi_skin_deformer, clusters) },
 	{ "Skin Cluster Node", UFBXWI_CONN_BIT_ELEMENT_NODE, UFBXWI_CONN_BIT_ELEMENT_SKIN_CLUSTER, ufbxwi_conn_id_list_ex(ufbxwi_node, skin_clusters, UFBXWI_CONN_TYPE_UNORDERED), ufbxwi_conn_id(ufbxwi_skin_cluster, node) },
