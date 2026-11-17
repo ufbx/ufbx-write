@@ -1,6 +1,10 @@
 #ifndef UFBXW_UFBX_WRITE_C_INCLUDED
 #define UFBXW_UFBX_WRITE_C_INCLUDED
 
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 #if defined(UFBX_HEADER_PATH)
 	#include UFBX_HEADER_PATH
 #else
