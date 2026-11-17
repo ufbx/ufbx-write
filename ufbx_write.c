@@ -4283,8 +4283,11 @@ uint32_t ufbxwi_hash_token(ufbxwi_token token)
 
 #ifdef UFBXWI_FEATURE_BUFFER
 
-#define ufbxwi_empty_int_buffer ((ufbxw_int_buffer){NULL,0})
+#ifdef __cplusplus
+#define ufbxwi_empty_vec3_buffer (ufbxw_vec3_buffer{0})
+#else
 #define ufbxwi_empty_vec3_buffer ((ufbxw_vec3_buffer){0})
+#endif
 
 typedef enum {
 	UFBXWI_BUFFER_TYPE_NONE,
