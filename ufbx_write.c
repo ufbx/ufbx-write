@@ -11153,7 +11153,7 @@ static void ufbxwi_save_props(ufbxwi_save_context *sc, const ufbxwi_element *ele
 				flags |= UFBXW_PROP_FLAG_ANIMATED;
 			}
 
-			if (tmpl_prop != NULL && tmpl_prop->type == base->type && ((tmpl_prop->flags ^ flags) & ~UFBXWI_PROP_FLAG_TEMP_MASK) == 0) {
+			if (tmpl_prop != NULL && tmpl_prop->type == base->type && ((tmpl_prop->flags ^ flags) & ~(uint32_t)UFBXWI_PROP_FLAG_TEMP_MASK) == 0) {
 				const void *base_data = ufbxwi_resolve_prop_value(element, base->value);
 				const void *tmpl_data = ufbxwi_resolve_prop_value(tmpl, tmpl_prop->value);
 				size_t data_size = ufbxwi_prop_data_infos[scene->prop_types.data[base->type].data_type].size;
@@ -11197,11 +11197,11 @@ static void ufbxwi_save_props(ufbxwi_save_context *sc, const ufbxwi_element *ele
 		if (p->flags & UFBXW_PROP_FLAG_HIDDEN) *flag++ = 'H';
 		if (p->flags & (UFBXW_PROP_FLAG_MUTE_X|UFBXW_PROP_FLAG_MUTE_Y|UFBXW_PROP_FLAG_MUTE_Z)) {
 			*flag++ = 'M';
-			*flag++ = '0' + ((p->flags >> 8) & 0x7);
+			*flag++ = (char)((uint32_t)'0' + ((p->flags >> 8) & 0x7));
 		}
 		if (p->flags & (UFBXW_PROP_FLAG_LOCK_X|UFBXW_PROP_FLAG_LOCK_Y|UFBXW_PROP_FLAG_LOCK_Z)) {
 			*flag++ = 'L';
-			*flag++ = '0' + ((p->flags >> 4) & 0x7);
+			*flag++ = (char)((uint32_t)'0' + ((p->flags >> 4) & 0x7));
 		}
 		*flag++ = '\0';
 		ufbxw_assert(flag <= flags + sizeof(flags));
@@ -13457,7 +13457,7 @@ ufbxw_abi void ufbxw_override_prop_flags(ufbxw_scene *scene, ufbxw_id id, const 
 	ufbxwi_prop *p = ufbxwi_element_edit_prop(scene, element, token);
 	if (!p) return;
 
-	p->flags = flags & ~UFBXWI_PROP_FLAG_TEMP_MASK;
+	p->flags = flags & (uint32_t)~UFBXWI_PROP_FLAG_TEMP_MASK;
 }
 
 ufbxw_abi uint32_t ufbxw_get_prop_flags(ufbxw_scene *scene, ufbxw_id id, const char *prop)
