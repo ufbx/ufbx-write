@@ -77,7 +77,7 @@
 // `ufbxw_source_version` contains the version of the corresponding source file.
 // HINT: The version can be compared numerically to the result of `ufbxw_pack_version()`,
 // for example `#if UFBXW_VERSION >= ufbxw_pack_version(0, 12, 0)`.
-#define UFBXW_HEADER_VERSION ufbxw_pack_version(0, 4, 0)
+#define UFBXW_HEADER_VERSION ufbxw_pack_version(0, 5, 0)
 #define UFBXW_VERSION UFBXW_HEADER_VERSION
 
 #ifdef __cplusplus
