@@ -5335,7 +5335,7 @@ typedef struct {
 	ufbxw_blend_deformer deformer;
 	ufbxwi_blend_shape_conn_list blend_shapes;
 	ufbxw_real deform_percent;
-	ufbxw_real_buffer full_weights;
+	ufbxw_real_buffer custom_full_weights;
 } ufbxwi_blend_channel;
 
 typedef struct {
@@ -11474,15 +11474,14 @@ static void ufbxwi_save_blend_channel(ufbxwi_save_context *sc, ufbxwi_blend_chan
 {
 	ufbxwi_dom_value(sc, "DeformPercent", "D", channel->deform_percent);
 
-	if (channel->full_weights.id) {
-		ufbxwi_dom_array(sc, "FullWeights", channel->full_weights.id);
-		return;
+	if (channel->custom_full_weights.id) {
+		ufbxwi_dom_array(sc, "FullWeights", channel->custom_full_weights.id);
+	} else {
+		ufbxwi_stream_fn full_weights_fn;
+		full_weights_fn.real_fn = &ufbxwi_stream_full_weights;
+		ufbxw_buffer_id full_weights_buffer = ufbxwi_create_stream_buffer(&sc->buffers, UFBXWI_BUFFER_TYPE_REAL, full_weights_fn, channel->blend_shapes.data, channel->blend_shapes.count);
+		ufbxwi_dom_array(sc, "FullWeights", full_weights_buffer);
 	}
-
-	ufbxwi_stream_fn full_weights_fn;
-	full_weights_fn.real_fn = &ufbxwi_stream_full_weights;
-	ufbxw_buffer_id full_weights_buffer = ufbxwi_create_stream_buffer(&sc->buffers, UFBXWI_BUFFER_TYPE_REAL, full_weights_fn, channel->blend_shapes.data, channel->blend_shapes.count);
-	ufbxwi_dom_array(sc, "FullWeights", full_weights_buffer);
 }
 
 static void ufbxwi_save_blend_shape(ufbxwi_save_context *sc, ufbxwi_blend_shape *shape)
@@ -14401,11 +14400,11 @@ ufbxw_abi ufbxw_real ufbxw_blend_channel_get_weight(ufbxw_scene *scene, ufbxw_bl
 	return bc->deform_percent;
 }
 
-ufbxw_abi void ufbxw_blend_channel_set_full_weights(ufbxw_scene *scene, ufbxw_blend_channel channel, ufbxw_real_buffer weights)
+ufbxw_abi void ufbxw_blend_channel_set_custom_full_weights(ufbxw_scene *scene, ufbxw_blend_channel channel, ufbxw_real_buffer weights)
 {
 	ufbxwi_blend_channel *bc = ufbxwi_get_blend_channel(scene, channel);
 	ufbxwi_check_element(scene, channel.id, bc);
-	ufbxwi_set_buffer_from_user(&scene->buffers, &bc->full_weights.id, weights.id);
+	ufbxwi_set_buffer_from_user(&scene->buffers, &bc->custom_full_weights.id, weights.id);
 }
 
 ufbxw_abi ufbxw_blend_shape ufbxw_create_blend_shape(ufbxw_scene *scene)
