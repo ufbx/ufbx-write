@@ -1073,6 +1073,8 @@ ufbxw_abi void ufbxw_blend_channel_add_shape(ufbxw_scene *scene, ufbxw_blend_cha
 ufbxw_abi void ufbxw_blend_channel_set_weight(ufbxw_scene *scene, ufbxw_blend_channel channel, ufbxw_real weight);
 ufbxw_abi ufbxw_real ufbxw_blend_channel_get_weight(ufbxw_scene *scene, ufbxw_blend_channel channel);
 
+ufbxw_abi void ufbxw_blend_channel_set_full_weights(ufbxw_scene *scene, ufbxw_blend_channel channel, ufbxw_real_buffer weights);
+
 // -- Blend shape
 
 ufbxw_abi ufbxw_blend_shape ufbxw_create_blend_shape(ufbxw_scene *scene);
