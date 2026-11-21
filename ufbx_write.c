@@ -1476,7 +1476,7 @@ static ufbxwi_forceinline void ufbxwi_list_free_size(ufbxwi_allocator *ator, voi
 	list->count = list->capacity = 0;
 }
 
-#if UFBXW_DEV
+#if defined(UFBXW_DEV)
 	#define ufbxwi_check_ptr_type(type, expr) ((void)(sizeof((type*)NULL - (expr))))
 #else
 	#define ufbxwi_check_ptr_type(type, expr) ((void)0)
