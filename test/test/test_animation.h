@@ -49,6 +49,13 @@ UFBXWT_SCENE_CHECK(anim_simple)
 		ufbx_vec3 value = { key.value.x, key.value.y, key.value.z };
 		ufbxwt_assert_close_uvec3(err, transform.translation, value);
 	}
+
+	{
+		ufbx_prop *prop = ufbx_find_prop(&node->props, UFBX_Lcl_Translation);
+		ufbxwt_assert(prop);
+		ufbxwt_assert(prop->flags & UFBX_PROP_FLAG_ANIMATABLE);
+		ufbxwt_assert(!strcmp(ufbxwt_prop_flag_string(&node->element, UFBX_Lcl_Translation), "A+"));
+	}
 }
 #endif
 
