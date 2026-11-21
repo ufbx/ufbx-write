@@ -11158,10 +11158,13 @@ static void ufbxwi_save_props(ufbxwi_save_context *sc, const ufbxwi_element *ele
 		const ufbxwi_prop_type *type = &scene->prop_types.data[p->type];
 		const void *data = ufbxwi_resolve_prop_value(element, p->value);
 
-		// TODO: Proper flags
 		char flags[16];
 		char *flag = flags;
 		if (p->flags & UFBXW_PROP_FLAG_ANIMATABLE) *flag++ = 'A';
+		if (p->flags & UFBXW_PROP_FLAG_USER) {
+			if (p->flags & UFBXW_PROP_FLAG_ANIMATABLE) *flag++ = '+';
+			*flag++ = 'U';
+		}
 		*flag++ = '\0';
 		ufbxw_assert(flag <= flags + sizeof(flags));
 
@@ -13405,6 +13408,19 @@ ufbxw_abi void ufbxw_add_string(ufbxw_scene *scene, ufbxw_id id, const char *pro
 	ufbxw_string str;
 	if (!ufbxwi_intern_string(&scene->string_pool, &str, value, strlen(value))) return;
 	ufbxwi_add_prop(scene, id, prop, strlen(prop), type, &str, UFBXW_PROP_DATA_STRING);
+}
+
+ufbxw_abi void ufbxw_set_prop_flags(ufbxw_scene *scene, ufbxw_id id, const char *prop, uint32_t flags)
+{
+	ufbxwi_token token = ufbxwi_get_token(&scene->string_pool, prop, strlen(prop));
+	ufbxwi_element *element = ufbxwi_get_element(scene, id);
+	if (!token || !element) return;
+
+	ufbxwi_prop *p = ufbxwi_element_edit_prop(scene, element, token);
+	if (!p) return;
+
+	const uint32_t user_flags = UFBXW_PROP_FLAG_ANIMATABLE | UFBXW_PROP_FLAG_USER;
+	p->flags = (p->flags & ~user_flags) | (flags & user_flags);
 }
 
 ufbxw_abi bool ufbxw_get_bool(ufbxw_scene *scene, ufbxw_id id, const char *prop)
