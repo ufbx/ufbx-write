@@ -196,6 +196,13 @@ void ufbxwt_do_scene_test(const char *name, void (*test_fn)(ufbxw_scene *scene, 
 #define UFBXWT_SCENE_TEST(name) UFBXWT_SCENE_TEST_FLAGS(name, 0)
 #define UFBXWT_SCENE_CHECK(name) UFBXWT_SCENE_CHECK_FLAGS(name, 0)
 
+typedef enum ufbxwt_scene_test_flags {
+
+	// Set the creator to a value recognized as Blender binary in ufbx
+	UFBXWT_SCENE_TEST_FLAG_BLENDER_CREATOR = 0x1,
+
+} ufbxwt_scene_test_flags;
+
 #include "all_tests.h"
 
 #undef UFBXWT_IMPL
@@ -357,11 +364,24 @@ void ufbxwt_do_scene_test(const char *name, void (*test_fn)(ufbxw_scene *scene, 
 	static const uint32_t versions[] = { 7400, 7500 };
 	static const ufbxw_save_format formats[] = { UFBXW_SAVE_FORMAT_ASCII, UFBXW_SAVE_FORMAT_BINARY };
 
+	char override_creator[256];
+
 	for (int version_ix = 0; version_ix < ufbxwt_arraycount(versions); version_ix++) {
 		for (int format_ix = 0; format_ix < ufbxwt_arraycount(formats); format_ix++) {
 			ufbxw_save_opts save_opts = { 0 };
 			save_opts.version = versions[version_ix];
 			save_opts.format = formats[format_ix];
+
+			if (flags & UFBXWT_SCENE_TEST_FLAG_BLENDER_CREATOR) {
+				snprintf(override_creator, sizeof(override_creator),
+					"Blender (ufbx_write %u.%u.%u) - 1.0.0 - 1.0.0",
+					ufbxw_version_major(UFBXW_VERSION),
+					ufbxw_version_minor(UFBXW_VERSION),
+					ufbxw_version_patch(UFBXW_VERSION));
+
+				save_opts.enable_override_creator = true;
+				save_opts.override_creator = ufbxw_str(override_creator);
+			}
 
 			uint32_t version = save_opts.version;
 			const char *format = save_opts.format == UFBXW_SAVE_FORMAT_ASCII ? "ascii" : "binary";
