@@ -468,7 +468,15 @@ typedef enum ufbxw_prop_data_type {
 
 typedef enum ufbxw_prop_flag {
 	UFBXW_PROP_FLAG_ANIMATABLE = 0x1,
-	UFBXW_PROP_FLAG_USER = 0x2,
+	UFBXW_PROP_FLAG_ANIMATED = 0x2,
+	UFBXW_PROP_FLAG_USER_DEFINED = 0x4,
+	UFBXW_PROP_FLAG_HIDDEN = 0x8,
+	UFBXW_PROP_FLAG_LOCK_X = 0x10,
+	UFBXW_PROP_FLAG_LOCK_Y = 0x20,
+	UFBXW_PROP_FLAG_LOCK_Z = 0x40,
+	UFBXW_PROP_FLAG_MUTE_X = 0x100,
+	UFBXW_PROP_FLAG_MUTE_Y = 0x200,
+	UFBXW_PROP_FLAG_MUTE_Z = 0x400,
 } ufbxw_prop_flag;
 
 typedef enum ufbxw_prop_type {
@@ -844,6 +852,11 @@ ufbxw_abi void ufbxw_add_vec2(ufbxw_scene *scene, ufbxw_id id, const char *prop,
 ufbxw_abi void ufbxw_add_vec3(ufbxw_scene *scene, ufbxw_id id, const char *prop, ufbxw_prop_type type, ufbxw_vec3 value);
 ufbxw_abi void ufbxw_add_vec4(ufbxw_scene *scene, ufbxw_id id, const char *prop, ufbxw_prop_type type, ufbxw_vec4 value);
 ufbxw_abi void ufbxw_add_string(ufbxw_scene *scene, ufbxw_id id, const char *prop, ufbxw_prop_type type, const char *value);
+
+// Override all flags of a given property
+// NOTE: This will remove a predefined `UFBXW_PROP_FLAG_ANIMATABLE` if not specified manually
+ufbxw_abi void ufbxw_override_prop_flags(ufbxw_scene *scene, ufbxw_id id, const char *prop, uint32_t flags);
+ufbxw_abi uint32_t ufbxw_get_prop_flags(ufbxw_scene *scene, ufbxw_id id, const char *prop);
 
 ufbxw_abi bool ufbxw_get_bool(ufbxw_scene *scene, ufbxw_id id, const char *prop);
 ufbxw_abi int32_t ufbxw_get_int(ufbxw_scene *scene, ufbxw_id id, const char *prop);

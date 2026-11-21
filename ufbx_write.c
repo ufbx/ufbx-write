@@ -9727,6 +9727,7 @@ typedef struct {
 
 UFBXWI_LIST_TYPE(ufbxwi_save_object_type_list, ufbxwi_save_object_type);
 UFBXWI_LIST_TYPE(ufbxwi_mesh_attribute_ptr_list, ufbxwi_mesh_attribute*);
+UFBXWI_LIST_TYPE(ufbxwi_token_list, ufbxwi_token);
 
 // TODO(wq): Rename this to something more descriptive
 typedef struct {
@@ -9769,6 +9770,7 @@ typedef struct {
 	size_t stream_buffer_size;
 
 	ufbxwi_prop_list tmp_prop_list;
+	ufbxwi_token_list tmp_anim_props;
 	ufbxwi_save_object_type_list object_types;
 	ufbxwi_conn_list tmp_conns;
 
@@ -11057,6 +11059,13 @@ static int ufbxwi_cmp_prop_order(const void *va, const void *vb)
 	return 0;
 }
 
+static int ufbxwi_cmp_token(const void *va, const void *vb)
+{
+	ufbxwi_token a = *(const ufbxwi_token*)va, b = *(const ufbxwi_token*)vb;
+	if (a != b) return a < b ? -1 : +1;
+	return 0;
+}
+
 static void ufbxwi_save_props(ufbxwi_save_context *sc, const ufbxwi_element *element, const ufbxwi_props *default_props, const ufbxwi_element *tmpl)
 {
 	ufbxw_scene *scene = sc->scene;
@@ -11101,11 +11110,25 @@ static void ufbxwi_save_props(ufbxwi_save_context *sc, const ufbxwi_element *ele
 	}
 
 	// TODO: Better sort here
-	qsort(sc->tmp_prop_list.data, prop_count, sizeof(ufbxwi_prop), &ufbxwi_cmp_prop_identity);
+	if (prop_count > 1) {
+		qsort(sc->tmp_prop_list.data, prop_count, sizeof(ufbxwi_prop), &ufbxwi_cmp_prop_identity);
+	}
+
+	sc->tmp_anim_props.count = 0;
+	ufbxwi_for_list(const ufbxwi_conn, conn, element->anim_props) {
+		ufbxwi_check(ufbxwi_list_push_copy(&sc->ator, &sc->tmp_anim_props, ufbxwi_token, &conn->dst_prop));
+	}
+	const ufbxwi_token *anim_props = sc->tmp_anim_props.data;
+	size_t anim_count = sc->tmp_anim_props.count;
+
+	// TODO: Better sort here
+	if (anim_count > 1) {
+		qsort(sc->tmp_anim_props.data, anim_count, sizeof(ufbxwi_token), &ufbxwi_cmp_token);
+	}
 
 	{
 		// Resolve properties
-		size_t dst_ix = 0;
+		size_t dst_ix = 0, anim_ix = 0;
 		for (size_t src_ix = 0; src_ix < prop_count; src_ix++) {
 			const ufbxwi_prop *base = &props[src_ix], *tmpl_prop = NULL;
 			ufbxwi_token token = base->token;
@@ -11123,9 +11146,15 @@ static void ufbxwi_save_props(ufbxwi_save_context *sc, const ufbxwi_element *ele
 				src_ix++;
 			}
 
-			// Skip writing if the value matches the template
-			// TODO: Force saving properties that are animated
-			if (tmpl_prop != NULL && tmpl_prop->type == base->type) {
+			while (anim_ix < anim_count && anim_props[anim_ix] < token) {
+				anim_ix++;
+			}
+			uint32_t flags = base->flags;
+			if (anim_ix < anim_count && anim_props[anim_ix] == token) {
+				flags |= UFBXW_PROP_FLAG_ANIMATED;
+			}
+
+			if (tmpl_prop != NULL && tmpl_prop->type == base->type && ((tmpl_prop->flags ^ flags) & ~(uint32_t)UFBXWI_PROP_FLAG_TEMP_MASK) == 0) {
 				const void *base_data = ufbxwi_resolve_prop_value(element, base->value);
 				const void *tmpl_data = ufbxwi_resolve_prop_value(tmpl, tmpl_prop->value);
 				size_t data_size = ufbxwi_prop_data_infos[scene->prop_types.data[base->type].data_type].size;
@@ -11134,7 +11163,9 @@ static void ufbxwi_save_props(ufbxwi_save_context *sc, const ufbxwi_element *ele
 				}
 			}
 
-			props[dst_ix++] = *base;
+			props[dst_ix] = *base;
+			props[dst_ix].flags = flags;
+			dst_ix++;
 		}
 		prop_count = dst_ix;
 	}
@@ -11159,10 +11190,20 @@ static void ufbxwi_save_props(ufbxwi_save_context *sc, const ufbxwi_element *ele
 		const ufbxwi_prop_type *type = &scene->prop_types.data[p->type];
 		const void *data = ufbxwi_resolve_prop_value(element, p->value);
 
-		// TODO: Proper flags
 		char flags[16];
 		char *flag = flags;
-		if (p->flags & UFBXW_PROP_FLAG_ANIMATABLE) *flag++ = 'A';
+		if (p->flags & (UFBXW_PROP_FLAG_ANIMATABLE|UFBXW_PROP_FLAG_ANIMATED)) *flag++ = 'A';
+		if (p->flags & UFBXW_PROP_FLAG_ANIMATED) *flag++ = '+';
+		if (p->flags & UFBXW_PROP_FLAG_USER_DEFINED) *flag++ = 'U';
+		if (p->flags & UFBXW_PROP_FLAG_HIDDEN) *flag++ = 'H';
+		if (p->flags & (UFBXW_PROP_FLAG_MUTE_X|UFBXW_PROP_FLAG_MUTE_Y|UFBXW_PROP_FLAG_MUTE_Z)) {
+			*flag++ = 'M';
+			*flag++ = (char)((uint32_t)'0' + ((p->flags >> 8) & 0x7));
+		}
+		if (p->flags & (UFBXW_PROP_FLAG_LOCK_X|UFBXW_PROP_FLAG_LOCK_Y|UFBXW_PROP_FLAG_LOCK_Z)) {
+			*flag++ = 'L';
+			*flag++ = (char)((uint32_t)'0' + ((p->flags >> 4) & 0x7));
+		}
 		*flag++ = '\0';
 		ufbxw_assert(flag <= flags + sizeof(flags));
 
@@ -13410,6 +13451,30 @@ ufbxw_abi void ufbxw_add_string(ufbxw_scene *scene, ufbxw_id id, const char *pro
 	ufbxw_string str;
 	if (!ufbxwi_intern_string(&scene->string_pool, &str, value, strlen(value))) return;
 	ufbxwi_add_prop(scene, id, prop, strlen(prop), type, &str, UFBXW_PROP_DATA_STRING);
+}
+
+ufbxw_abi void ufbxw_override_prop_flags(ufbxw_scene *scene, ufbxw_id id, const char *prop, uint32_t flags)
+{
+	ufbxwi_token token = ufbxwi_get_token(&scene->string_pool, prop, strlen(prop));
+	ufbxwi_element *element = ufbxwi_get_element(scene, id);
+	if (!token || !element) return;
+
+	ufbxwi_prop *p = ufbxwi_element_edit_prop(scene, element, token);
+	if (!p) return;
+
+	p->flags = flags & ~(uint32_t)UFBXWI_PROP_FLAG_TEMP_MASK;
+}
+
+ufbxw_abi uint32_t ufbxw_get_prop_flags(ufbxw_scene *scene, ufbxw_id id, const char *prop)
+{
+	ufbxwi_token token = ufbxwi_get_token(&scene->string_pool, prop, strlen(prop));
+	ufbxwi_element *element = ufbxwi_get_element(scene, id);
+	if (!token || !element) return 0;
+
+	const ufbxwi_prop *p = ufbxwi_element_find_prop(scene, element, token);
+	if (!p) return 0;
+
+	return p->flags;
 }
 
 ufbxw_abi bool ufbxw_get_bool(ufbxw_scene *scene, ufbxw_id id, const char *prop)

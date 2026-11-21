@@ -402,6 +402,8 @@ void ufbxwt_do_scene_test(const char *name, void (*test_fn)(ufbxw_scene *scene, 
 
 			if (check_fn) {
 				ufbx_load_opts load_opts = { 0 };
+				load_opts.retain_dom = true;
+
 				ufbx_error load_error;
 
 				ufbx_scene *loaded_scene = ufbx_load_file(output_path, &load_opts, &load_error);
