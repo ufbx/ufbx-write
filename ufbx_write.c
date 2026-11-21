@@ -13457,7 +13457,7 @@ ufbxw_abi void ufbxw_override_prop_flags(ufbxw_scene *scene, ufbxw_id id, const 
 	ufbxwi_prop *p = ufbxwi_element_edit_prop(scene, element, token);
 	if (!p) return;
 
-	p->flags = flags & (uint32_t)~UFBXWI_PROP_FLAG_TEMP_MASK;
+	p->flags = flags & ~(uint32_t)UFBXWI_PROP_FLAG_TEMP_MASK;
 }
 
 ufbxw_abi uint32_t ufbxw_get_prop_flags(ufbxw_scene *scene, ufbxw_id id, const char *prop)
