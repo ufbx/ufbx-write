@@ -15582,9 +15582,13 @@ ufbxw_abi ufbxwi_noinline ufbxw_matrix ufbxw_transform_to_matrix(const ufbxw_tra
 	m.m02 = sz * (+xz + yw);
 	m.m12 = sz * (-xw + yz);
 	m.m22 = sz * (-xx - yy + 0.5f);
+	m.m30 = 0.0f;
+	m.m31 = 0.0f;
+	m.m32 = 0.0f;
 	m.m03 = t->translation.x;
 	m.m13 = t->translation.y;
 	m.m23 = t->translation.z;
+	m.m33 = 1.0f;
 	return m;
 }
 
