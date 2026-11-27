@@ -11792,7 +11792,11 @@ static void ufbxwi_save_element(ufbxwi_save_context *sc, ufbxwi_element *element
 			const ufbxwi_element_type *attrib_et = &scene->element_types.data[attrib->type_id];
 			sub_type = attrib_et->sub_type;
 		} else {
-			sub_type = UFBXWI_TOKEN_EMPTY; // TODO: What is the correct thing here?
+			// Write nodes without an attribute as "Null". Some importers
+			// rely on type, e.g. they treat only "Null" or "Root" bone parents
+			// as the armature.
+			sub_type = ufbxwi_intern_token(&scene->string_pool, "Null", 4);
+			ufbxwi_check(sub_type != UFBXWI_TOKEN_NONE);
 		}
 	}
 
